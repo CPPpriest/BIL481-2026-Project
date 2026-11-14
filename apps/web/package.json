@@ -1,0 +1,27 @@
+{
+  "name": "@campus-orchestrator/web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Frontend routing logic for the Campus Data Orchestrator",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run --root ../.. apps/web/tests",
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\""
+  },
+  "dependencies": {
+    "@campus-orchestrator/shared": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "vitest": "^5.1.0"
+  }
+}
