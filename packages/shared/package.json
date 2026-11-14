@@ -1,5 +1,5 @@
 {
-  "name": "@campus/shared",
+  "name": "@campus-orchestrator/shared",
   "version": "1.0.0",
   "description": "Shared contracts, domain types, MCP definitions, and constants for Campus Data Orchestrator",
   "main": "./dist/index.js",
