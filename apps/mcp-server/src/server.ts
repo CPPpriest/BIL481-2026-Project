@@ -11,6 +11,16 @@ import {
   ToolDispatcher,
   AuthenticationRequiredError,
 } from './dispatcher/ToolDispatcher.js';
+import { registerSampleMockHandlers } from './mocks/sampleMockHandlers.js';
+
+export interface CampusMcpServerOptions {
+  serverInfo?: { name: string; version: string };
+  /**
+   * If true, automatically registers temporary Phase 2 sample mock handlers
+   * if no handler is already registered. Defaults to true.
+   */
+  registerSampleMocks?: boolean;
+}
 
 /**
  * Creates and configures the core Model Context Protocol (MCP) server instance.
@@ -20,12 +30,22 @@ import {
  * - FR-02: Transport Layer Support hook (Streamable HTTP / stdio)
  *
  * @param dispatcher ToolDispatcher instance managing validation and handlers
- * @param serverInfo Name and version metadata for MCP handshake
+ * @param options Server configuration options
  */
 export function createCampusMcpServer(
   dispatcher: ToolDispatcher = new ToolDispatcher(),
-  serverInfo = { name: 'campus-data-orchestrator', version: '1.0.0' }
+  options: CampusMcpServerOptions = {}
 ) {
+  const serverInfo = options.serverInfo ?? {
+    name: 'campus-data-orchestrator',
+    version: '1.0.0',
+  };
+
+  // Register temporary mock handlers for Phase 2 demonstration if requested
+  if (options.registerSampleMocks ?? true) {
+    registerSampleMockHandlers(dispatcher);
+  }
+
   const server = new Server(serverInfo, {
     capabilities: {
       tools: {},
