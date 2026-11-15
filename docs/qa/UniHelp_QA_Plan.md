@@ -5,41 +5,19 @@
 | **Course** | BIL 481 Software Engineering — Project Assignment 2 |
 | **Project** | UniHelp — Campus Helping Platform |
 | **Document** | Quality Assurance Plan |
-| **Version** | 0.1 (draft) |
+| **Version** | 1.0 (Final) |
 | **Due date** | 15-11-2026 |
 
 ## Contributors
 
 | Name | Role | GitHub | Sections Written |
 |---|---|---|---|
-| Furkan Yılmaz | Project Manager, Backend Developer (Authentication, Security, Reporting, Notifications) | `@furylmz` | §§1.1, 2.2.1, 2.2.4, 2.3.1, 2.3.4, 3.2, 3.5, 4.1.3, 4.2, 5 |
-| Efe Deniz Kahvecioğlu | QA / Test Lead, DevOps Engineer, Backend Developer (Messaging, Data Lifecycle) | `@efed3n1z` | §§1.3, 1.4, 2.2.3, 2.3.3, 3.4 |
-| Enis Talha Öztepe | Software Architect, Backend Developer (Posts, Search, Admin, Database) | `@enisoztepe` | §§1.2, 2.1.1, 2.2.2, 2.2.4, 2.3.2, 2.3.4, 3.3, 4.1.1, 4.1.2, 4.2, 5 |
-| Muhammed Taha Kaya | Requirements Analyst, UI/UX Designer, Frontend Developer | `@mt-kaya` | §§2.1.2, 2.3.5, 2.4, 3.1, 4.1.4, 4.2, 5, Wireframes, ToC & Final Review |
+| Furkan Yılmaz | Project Manager, Backend Developer (Authentication, Security, Reporting, Notifications) | `@furylmz` | §2.2, TC-01, TC-02, TC-05 |
+| Efe Deniz Kahvecioğlu | QA / Test Lead, DevOps Engineer, Backend Developer (Messaging, Data Lifecycle) | `@efed3n1z` | §1, §2.4, §3.1 template, TC-04, §3.2 |
+| Enis Talha Öztepe | Software Architect, Backend Developer (Posts, Search, Admin, Database) | `@enisoztepe` | §2.1, TC-03 |
+| Muhammed Taha Kaya | Requirements Analyst, UI/UX Designer, Frontend Developer | `@mt-kaya` | §2.3, TC-06, ToC & final review |
 
 ## Table of Contents
-
-1. [System Overview](#1-system-overview)
-   1. [Description](#11-description)
-   2. [Architecture](#12-architecture)
-   3. [Technology Stack](#13-technology-stack)
-   4. [UML Overview](#14-uml-overview)
-2. [Implementation Details](#2-implementation-details)
-   1. [Codebase Structure](#21-codebase-structure)
-   2. [Key Implementations](#22-key-implementations)
-   3. [Component Interfaces & API Endpoints](#23-component-interfaces--api-endpoints)
-   4. [Visual Interfaces](#24-visual-interfaces)
-3. [Use Case Support](#3-use-case-support)
-   1. [Use Case Selection & Requirement Mapping](#31-use-case-selection--requirement-mapping)
-   2. [UC1 Design — Register, verify & log in](#32-uc1-design--register-verify--log-in-with-university-e-mail)
-   3. [UC2 Design — Create and manage a post](#33-uc2-design--create-and-manage-a-post)
-   4. [UC3 Design — Search the feed and contact the author anonymously](#34-uc3-design--search-the-feed-and-contact-the-author-anonymously)
-   5. [UC4 Design — Report a post, auto-hide and admin review](#35-uc4-design--report-a-post-auto-hide-and-admin-review)
-4. [Design Decisions](#4-design-decisions)
-   1. [Technology Comparisons](#41-technology-comparisons)
-   2. [Justifications](#42-justifications)
-5. [Repository Artifacts](#5-repository-artifacts)
-6. [Task Matrix](#task-matrix)
 
 1. [Quality Assurance Strategy](#1-quality-assurance-strategy)
    1. [Overview](#11-overview)
@@ -370,11 +348,11 @@ R = Responsible (wrote the section), C = Contributed / reviewed.
 | Section / task | Furkan Yılmaz | Efe Deniz Kahvecioğlu | Enis Talha Öztepe | Muhammed Taha Kaya |
 |---|:-:|:-:|:-:|:-:|
 | Document skeleton and structure | | R | C | |
-| Contributors list and Table of Contents | | | | |
+| Contributors list and Table of Contents | | | | R |
 | 1 QA Strategy (overview, methodologies, automated vs. manual, CI) | | R | C | |
 | 2.1 Performance | | | R | |
 | 2.2 Security | R | | | |
-| 2.3 Usability | | | | |
+| 2.3 Usability | | | | R |
 | 2.4 Maintainability | | R | | |
 | 3.1 Test case template | | R | C | |
 | TC-01 | R | | | |
@@ -382,5 +360,5 @@ R = Responsible (wrote the section), C = Contributed / reviewed.
 | TC-03 | | | R | |
 | TC-04 | | R | | |
 | TC-05 | R | | | |
-| TC-06 | | | | |
+| TC-06 | | | | R |
 | 3.2 Bug Tracking (+ issue template) | | R | | |

@@ -909,17 +909,17 @@ Covers `/admin/reports`. The moderation queue displays reported and auto-hidden 
 
 ### 3.1 Use Case Selection & Requirement Mapping
 
-To satisfy Project Assignment 2 requirements, UniHelp implements the complete core feature set across four foundational Use Cases (UC1–UC4). All selected use cases are assigned **Must have** priority and cover the 8 key features outlined in PA-1 Project Definition §6, aligning directly with Sprints 1–3 in the Project Plan.
+To satisfy Project Assignment 2 requirements, UniHelp implements the complete core feature set across four foundational Use Cases (UC1–UC4). All requirements mapped to the four use cases are Must, except FR-10 (Should). The use cases cover the 8 key features outlined in PA-1 Project Definition §6, aligning directly with Sprints 1–3 in the Project Plan.
 
 | Use Case ID | Primary Actor | Description & Scope | Associated Functional Requirements | Non-Functional Requirements | Priority & Sprint |
 |---|---|---|---|---|---|
-| **UC1** | Guest (becomes Student) | University e-mail registration, allow-list verification, BCrypt password hashing, verification link expiry, unique alias generation, secure sessions and lockout. | FR-01, FR-02, FR-03, FR-04, FR-05, FR-07, FR-08 | NFR-01, NFR-02, NFR-03, NFR-04 | Must · Sprint 1 |
-| **UC2** | Student (Author) | Post creation and editing with category/subtype validation, title/description constraints, optional single image upload, author ownership enforcement, text sanitization, and Resolved status. | FR-09, FR-10, FR-11, FR-12, FR-13, FR-18 | NFR-03, NFR-04, NFR-07 | Must · Sprint 1 |
-| **UC3** | Student (Initiator / Searcher) | Feed browsing, keyword substring search, combined category/date/status filters, empty state feedback, post detail inspection, anonymous messaging creation, and encrypted message thread exchange. | FR-14, FR-15, FR-16, FR-17, FR-19, FR-20, FR-21, FR-24 | NFR-01, NFR-02, NFR-04, NFR-05, NFR-07 | Must · Sprint 2 |
-| **UC4** | Student (Reporter) / Administrator | Community reporting with duplicate prevention, automatic post hiding upon exceeding 3 unique unreviewed reports, admin moderation queue review, post restore/remove, and account suspension. | FR-25, FR-26, FR-27, FR-28, FR-29 | NFR-03, NFR-04, NFR-10 | Must · Sprint 3 |
+| **UC1** | Guest (becomes Student) | University e-mail registration, allow-list verification, BCrypt password hashing, verification link expiry, unique alias generation, secure sessions and lockout. | FR-01, FR-02, FR-03, FR-04, FR-05 | NFR-01, NFR-02, NFR-03, NFR-04 | Must · Sprint 1 |
+| **UC2** | Student (Author) | Post creation and editing with category/subtype validation, title/description constraints, optional single image upload, author ownership enforcement, text sanitization, and Resolved status. | FR-09, FR-10, FR-11, FR-12, FR-13 | NFR-03, NFR-04, NFR-07 | Must · Sprint 1 |
+| **UC3** | Student (Initiator / Searcher) | Feed browsing, keyword substring search, combined category/date/status filters, empty state feedback, post detail inspection, anonymous messaging creation, and encrypted message thread exchange. | FR-14, FR-15, FR-16, FR-17, FR-19, FR-20 | NFR-01, NFR-02, NFR-04, NFR-05, NFR-07 | Must · Sprint 2 |
+| **UC4** | Student (Reporter) / Administrator | Community reporting with duplicate prevention, automatic post hiding upon exceeding 3 unique unreviewed reports, admin moderation queue review, post restore/remove, and account suspension. | FR-25, FR-26, FR-27, FR-28 | NFR-03, NFR-04, NFR-10 | Must · Sprint 3 |
 
 #### 3.1.1 Traceability and Coverage Rationale
-- **Traceability to PA-1:** Every functional requirement (FR-01 through FR-29) and non-functional requirement (NFR-01 through NFR-11) defined in the Requirements Document is mapped directly to either service-layer component tests, Spring Boot integration tests, or manual evaluation procedures in the Quality Assurance Plan (§3.1).
+- **Traceability to PA-1:** The functional requirements of UC1–UC4 are traced to the test cases TC-01–TC-06 in the QA Plan (§3.1).
 - **Scope Alignment:** By constraining UniHelp to a single campus model (`@etu.edu.tr`), the application maintains strong domain boundaries, eliminates distributed transaction overhead, and achieves secure, reliable session and message encryption management within a single Spring Boot and PostgreSQL architecture.
 
 ### 3.2 UC1 Design — Register, verify & log in with university e-mail
@@ -1497,17 +1497,17 @@ PA-1 fixes Spring Security and "session handling" (Project Definition §3, §8.2
 
 **Result.** UniHelp is one monolith serving one campus, so the main advantage of JWT does not apply: no session store shared between many services or instances. The requirements that matter here are immediate logout and suspension, a 60-minute idle timeout and minimal exposure to XSS, and the server-side session handles all of them with Spring Security defaults. Sessions are kept in the existing PostgreSQL through Spring Session JDBC, so no new infrastructure is needed. The extra CSRF protection is a known, built-in Spring Security feature. Committed comparable snippets: [`SessionAuthConfig.java`](tech-comparison/SessionAuthConfig.java) and [`JwtAuthConfig.java`](tech-comparison/JwtAuthConfig.java), explained in [`README.md`](tech-comparison/README.md). They are design artifacts outside the Maven build; no latency was measured.
 
-#### 4.1.4 Frontend State Management: React Context / Local State vs. Redux Toolkit (Taha)
+#### 4.1.4 Frontend Framework: React 18 vs. Vue 3 (Taha)
 
-| Criterion | React Context API + Local `useState`/`useEffect` | Redux Toolkit (Global Store) |
+| Criterion | React 18 (with Vite) | Vue 3 |
 |---|---|---|
-| Application scale & complexity | UniHelp frontend consists of lightweight views (Feed, Detail, Form, Conversations, Admin) with localized state | Designed for large-scale applications with heavily shared, deeply nested global state trees |
-| Boilerplate & development speed | Minimal boilerplate; quick setup ideal for a 4-person academic project timeline within Sprint 1–3 | Significant boilerplate (slices, actions, reducers, store configuration) adding unnecessary overhead |
-| API Integration | Direct integration with `unihelpApi.js` fetch wrappers inside component lifecycle or custom hooks | Requires async thunks or RTK Query wrappers, introducing extra abstraction layers |
-| Team expertise & learning curve | Matches existing React 18 knowledge across the team with negligible training overhead | Steeper learning curve for team members focusing primarily on backend or QA tasks |
-| Decision | **Selected: React Context & Local State** | Rejected due to over-engineering for a single-campus monolithic SPA scope |
+| Component syntax | Function components written in JSX with hooks (`useState`, `useEffect`); markup and logic live in one JavaScript file | Single-file components with separate `<template>`, `<script>` and `<style>` blocks and the Composition API |
+| Fit with the PA-1 stack | Selected in PA-1 and used in the repository skeleton (React 18.3, Vite, React Router) | Would replace the agreed stack and the existing frontend skeleton |
+| Testing | Components can be tested with React Testing Library | Vue components would need Vue Test Utils, a different testing setup |
+| Learning cost | Matches the React knowledge the team already has, so there is no training overhead during Sprints 1–3 | A new template syntax and tooling to learn for a four-person team with a fixed deadline |
+| Decision | **Selected** | Rejected: no requirement is served better, and a change would cost time |
 
-**Result.** For UniHelp's scope, localized component state combined with React Context for authentication status (`authContext`) provides clean, maintainable separation without introducing external global state dependencies.
+**Result.** React 18 is kept. Both frameworks can build the SPA views needed here, so the decision rests on fit with the PA-1 stack, testing with React Testing Library and the team's existing knowledge. Committed comparable snippets: [`PostCard.jsx`](tech-comparison/PostCard.jsx) and [`PostCard.vue`](tech-comparison/PostCard.vue), explained in [`README.md`](tech-comparison/README.md). They are design artifacts outside the frontend build.
 
 ### 4.2 Justifications
 
@@ -1525,9 +1525,9 @@ PA-1 fixes Spring Security and "session handling" (Project Definition §3, §8.2
 
 Alternatives such as Node.js/Express or Django would mean a different language and security stack from the agreed PA-1 plan and the existing skeleton, without helping any requirement. **Authentication** uses server-side sessions, as decided in §4.1.3.
 
-**Messaging module & E-mail delivery (Efe).** The messaging architecture uses a dedicated module with private conversations linked to posts and asynchronous encryption at rest, satisfying NFR-02 and FR-19–FR-21. Storing only AES-256-GCM ciphertext and IV prevents plaintext leakage even if database storage is compromised, while the repository query patterns support ordered conversation retrieval without loading unneeded data. Mocked e-mail delivery via Spring Mail in unit tests ensures reliable registration token distribution without depending on external SMTP availability during development.
+**Messaging module (Efe).** Messaging is a separate `message` module in the layered monolith (controller – service – repository), so its access-control and privacy rules stay in one place. Conversations are linked to a post and limited to its two participants (FR-19). Message contents are encrypted at rest with AES-256-GCM using the JDK's built-in cryptography (no extra library): only the ciphertext and a per-message IV are stored, and the key comes from an environment variable, so a database leak does not expose message text (NFR-02). The module references users and posts by id and returns display aliases only, so e-mail addresses never reach messaging responses (FR-20, NFR-04).
 
-**Frontend architecture & UI responsiveness (Taha).** React 18.3 combined with Vite and responsive CSS grid/flexbox layouts was chosen to implement the single-page application (NFR-06, NFR-07, NFR-08). This ensures a smooth, mobile-first user experience across viewports ranging from `360 px` to `1920 px` while strictly enforcing accessibility standards (WCAG 2.1 Level AA touch targets and focus visibility) and preventing e-mail exposure on shared visual components.
+**Frontend architecture & UI responsiveness (Taha).** React 18.3 was chosen over Vue 3 (§4.1.4) because it is the PA-1 stack, works with React Testing Library and matches the team's existing knowledge. Combined with Vite and responsive CSS grid/flexbox layouts, it implements the single-page application (NFR-06, NFR-07, NFR-08) across viewports from `360 px` to `1920 px`, with accessibility checks (WCAG 2.1 Level AA touch targets and focus visibility) and no e-mail exposure on shared visual components.
 
 ---
 
@@ -1564,9 +1564,9 @@ Alternatives such as Node.js/Express or Django would mean a different language a
 |---|---|
 | Repository skeleton, Docker and Docker Compose configuration | `backend/pom.xml`, `backend/Dockerfile`, `docker-compose.yml`, `backend/src/main/resources/application.yml` |
 | Message module entities, repositories and interfaces | `backend/src/main/java/com/unihelp/message/{Conversation,Message,ConversationRepository,MessageRepository,MessageService,MessageEncryptor}.java` |
-| Message encryption implementation and DTOs | `backend/src/main/java/com/unihelp/message/impl/AesGcmMessageEncryptor.java`, `…/message/dto/` |
+| Message encryption interface/stub and DTOs | `backend/src/main/java/com/unihelp/message/AesGcmMessageEncryptor.java`, `…/message/dto/` |
 | Message DTO privacy test suite | `backend/src/test/java/com/unihelp/message/MessageDtoPrivacyTest.java` |
-| Test strategy, QA plan structure, performance and maintainability metrics, bug tracking workflow | `docs/qa/UniHelp_QA_Plan.md` §§1, 2.4, 3.2 |
+| Test strategy, QA plan structure, maintainability metrics, bug tracking workflow | `docs/qa/UniHelp_QA_Plan.md` §§1, 2.4, 3.2 |
 | Technology stack, UML diagrams, messaging design and data flow | This document §§1.3, 1.4, 2.2.3, 2.3.3, 3.4 |
 
 **Muhammed Taha Kaya's committed artifacts:**
@@ -1578,7 +1578,7 @@ Alternatives such as Node.js/Express or Django would mean a different language a
 | Reusable UI components (`PostCard`, accessible modal `ReportDialog`) | `frontend/src/components/{PostCard.jsx,ReportDialog.jsx}` |
 | Route-level page views (Auth, Feed, Post Detail, Form, Conversations, Admin) | `frontend/src/pages/` |
 | Low-fidelity vector wireframes for all four use cases (Desktop & Mobile) | `docs/design/wireframes/` |
-| Frontend technology comparison and state management evaluation | `docs/design/tech-comparison/` |
+| Frontend framework comparison (React vs. Vue) snippets and README section | `docs/design/tech-comparison/{PostCard.jsx,PostCard.vue}`, `README.md` |
 | Use case selection and requirement mapping (§3.1), frontend interface specifications (§2.3.5), visual interface wireframe mapping (§2.4), usability metrics (§2.3 of QA plan), and TC-06 search test case | This document §2.3.5, §2.4, §3.1; `docs/qa/UniHelp_QA_Plan.md` §2.3, §3.1 (TC-06) |
 
 ---
@@ -1590,25 +1590,26 @@ R = Responsible (wrote the section), C = Contributed / reviewed.
 | Section / task | Furkan Yılmaz | Efe Deniz Kahvecioğlu | Enis Talha Öztepe | Muhammed Taha Kaya |
 |---|:-:|:-:|:-:|:-:|
 | Document skeleton and structure | | R | C | |
-| Contributors list and Table of Contents | | | | |
+| Contributors list and Table of Contents | | | | R |
 | 1.1 Description | R | | | |
 | 1.2 Architecture | | | R | |
 | 1.3 Technology Stack | | R | C | |
 | 1.4 UML Overview (use case and class diagrams) | | R | C | |
 | 2.1 Codebase Structure — backend | | | R | |
-| 2.1 Codebase Structure — frontend | | | | |
+| 2.1 Codebase Structure — frontend | | | | R |
 | 2.2 / 2.3 `auth` module | R | | | |
 | 2.2 / 2.3 `post` module | | | R | |
 | 2.2 / 2.3 `message` module | | R | C | |
 | 2.2 / 2.3 `report` and `admin` modules | R | | C | |
-| 2.4 Visual Interfaces (wireframes) | | | | |
-| 3.1 Use Case Selection & Requirement Mapping | | | | |
+| 2.3.5 Frontend interfaces | | | | R |
+| 2.4 Visual Interfaces (wireframes) | | | | R |
+| 3.1 Use Case Selection & Requirement Mapping | | | | R |
 | 3.2 UC1 Design | R | | | |
 | 3.3 UC2 Design | | | R | |
 | 3.4 UC3 Design | | R | C | |
 | 3.5 UC4 Design | R | | | |
-| 4.1 Technology Comparisons | R | | R | |
-| 4.2 Justifications | R | | R | |
+| 4.1 Technology Comparisons | R | | R | R |
+| 4.2 Justifications | R | | R | R |
 | 5 Repository Artifacts | C | | R | |
 | Code: repository skeleton, Docker Compose, CI | | R | C | |
 | Code: `message` module interfaces and stubs | | R | | |
@@ -1616,4 +1617,7 @@ R = Responsible (wrote the section), C = Contributed / reviewed.
 | Code: database comparison snippets | | | R | |
 | Code: `auth`, `report`, `admin` entities, interfaces, DTOs and stubs | R | | | |
 | Code: authentication (JWT vs. session) comparison snippets | R | | | |
+| Code: frontend pages, components, API client | | | | R |
+| Code: wireframes (`docs/design/wireframes/`) | | | | R |
+| Code: React vs. Vue comparison snippets | | | | R |
 | Database schema / ER design | | | R | |
