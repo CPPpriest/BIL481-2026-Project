@@ -51,7 +51,9 @@
 
 ### 1.1 Description
 
-<!-- TODO: Furkan -->
+UniHelp is a responsive web application where students of one university campus help each other with two everyday problems: **lost and found** items, and **student cooperation** such as lending or borrowing books and finding a roommate. Lost-item announcements are scattered across WhatsApp groups, social-media pages and notice boards today, and students who want to cooperate have no trusted channel that is limited to their campus. UniHelp puts both needs in one searchable feed. Students create posts with a category, a sub-type, a description and an optional image. Other students search and filter the feed, and contact the author through private in-app messages. When the problem is solved, the author marks the post as Resolved (PA-1 Project Definition §2, §6).
+
+Trust and privacy shape the design. Only students with a verified university e-mail address (initially `@etu.edu.tr`) can register. Every user is shown under an automatically generated display alias, and e-mail addresses are never visible to other users. Passwords are stored as BCrypt hashes and message contents are encrypted at rest. A community reporting mechanism automatically hides a post after more than three unique reports and sends it to administrators, who can restore or remove posts and suspend accounts. Inactive posts are archived after 30 days and deleted six months after archiving. The system is a single Spring Boot monolith with a PostgreSQL database and a React single-page application, built by a team of four within the Fall 2026 semester for one campus (PA-1 Project Definition §3–§4).
 
 ### 1.2 Architecture
 
@@ -405,10 +407,10 @@ com.unihelp/
 
 | Module / path | Responsibility | Owner / implementation status |
 |---|---|---|
-| `auth` | University allowlist, registration/verification/login, session and role checks; expose current-user id and alias-only queries | Furkan; package placeholder until his PA-2 step |
+| `auth` | University allowlist, registration/verification/login, session and role checks; expose current-user id and alias-only queries | Furkan; `User` entity, enums, repository, `AuthService`/`UserQuery` interfaces, DTOs and controller/service stubs (§2.2.1) |
 | `post` | Post CRUD, owner checks, resolve, sanitization, image metadata, feed/search/filter contracts | Enis; entities/enums, repository, DTOs, query/service interfaces and controller/service stubs |
 | `message` | Private post-linked conversations, participant checks, encrypted messages, alias-only responses | Efe; entities/repositories and interfaces, implementation stubs |
-| `report` | Unique reports, threshold detection and hidden-post alert workflow | Furkan; package placeholder |
+| `report` | Unique reports, threshold detection and hidden-post alert workflow | Furkan; `Report` entity, repository, `ReportService` interface, DTOs and controller/service stubs (§2.2.4) |
 | `admin` | ADMIN-only report review, restore/remove, suspend/unsuspend and audit log | Enis; package placeholder, design contract in §2.2.4/§2.3.4 |
 | `lifecycle` | FR-08 anonymization and daily FR-30/31 retention work through service boundaries | Efe; package placeholder |
 | `common` | Shared configuration and consistent HTTP error responses; no business ownership decisions | Shared; package placeholder |
@@ -426,7 +428,28 @@ Controllers depend on services, services on repository interfaces; no frontend c
 
 #### 2.2.1 `auth` module
 
-<!-- TODO: Furkan -->
+Package `com.unihelp.auth` (owner: Furkan). `AuthController` → `AuthService` → `UserRepository`. Spring Security (filter chain, session, CSRF, role checks) wraps every other module's controllers, as described in §1.2. The selected session approach is explained in §4.1.3.
+
+| Component | Design / key rule | Requirement |
+|---|---|---|
+| `User`, `Role`, `AccountStatus` | Fields `email`, `passwordHash`, `displayAlias`, `role`, `status`, `failedAttempts` (column `failed_login_attempts`), `lockedUntil`, `notificationsEnabled`, `createdAt`. New accounts are STUDENT + PENDING. Never serialized. | FR-01–FR-05, FR-28 |
+| `UserRepository` | `findByEmail`, `existsByEmail`, `existsByDisplayAlias`; e-mail is stored normalized (trimmed, lower-case) so the unique index is case-insensitive in practice. | FR-02, FR-04 |
+| `AuthService` | register / verify / login / own account / suspension contract; extends `UserQuery`. | FR-01–FR-05, FR-28 |
+| `UserQuery` | `getDisplayAlias(userId)` returns only a `String` alias. It is the only way the post, message, report and admin modules read user identity. | FR-04, FR-20, NFR-04 |
+| DTOs | `RegisterRequest`, `LoginRequest`, `MessageResponse`, `AccountDto`. **Only `AccountDto` contains an e-mail address, and it is returned only as the caller's own profile** (login response). | NFR-04 |
+
+**Core logic (T3.1):**
+
+1. **Domain whitelist (FR-01).** The e-mail is trimmed and lower-cased; the part after the last `@` must be **exactly equal** to a row in `allowed_domains` (initially `etu.edu.tr`). Suffix matching is not used, so `etu.edu.tr.example.com` or `mail.etu.edu.tr` are rejected unless an administrator adds them. On rejection the service returns 400 with *"A verified university e-mail address is required"* **before** any repository write, so no user record exists.
+2. **Password policy and BCrypt (FR-02, NFR-02).** Bean Validation on `RegisterRequest` enforces 8–72 characters with at least one uppercase letter and one digit (72 bytes is the BCrypt input limit). The password is hashed with Spring Security's `BCryptPasswordEncoder` (strength 12, random salt inside the hash). Plain passwords are never stored, logged or returned. A duplicate e-mail returns 409.
+3. **Verification token, 24 hours (FR-03).** After the user row is saved as PENDING, the service creates 32 random bytes from `SecureRandom`, encodes them URL-safe Base64 for the link and stores only their **SHA-256 hash** with `expires_at = now + 24 h` and `used_at = null` in a `verification_tokens(id, user_id FK, token_hash UNIQUE, expires_at, used_at)` table. The mail with `…/verify?token=<raw>` is sent after the transaction commits. `verify` hashes the input, finds the row, rejects used (400) or expired (410) tokens, then sets `used_at` and the account to ACTIVE in one transaction. If a registration arrives for an e-mail that belongs only to a PENDING account with an expired token, that account is replaced, so a student who missed the link is not blocked forever.
+4. **Alias generation (FR-04).** `adjective + animal + 3-digit number` from fixed English word lists with `SecureRandom` (e.g. `BlueOwl482`); never derived from the e-mail. The service retries while `existsByDisplayAlias` is true (at most 10 times, then a 4-digit number). The UNIQUE constraint on `display_alias` is the final guard: a rare race causes a retry, not a duplicate.
+5. **Lockout, 5 failures → 15 minutes (FR-05).** Login loads the user by normalized e-mail and checks in this order: unknown e-mail → 401 with a generic *"Invalid e-mail or password"* (a dummy BCrypt check keeps timing similar); PENDING → 403 *"Please verify your e-mail address first"*; SUSPENDED → 403 *"Your account is suspended"* (FR-28); LOCKED with `lockedUntil > now` → 423, **even with the correct password**; LOCKED with an expired lock → back to ACTIVE with `failedAttempts = 0`, then continue. A wrong password increments `failedAttempts` and returns 401; the 5th consecutive failure sets LOCKED and `lockedUntil = now + 15 min` and returns 423, so the user learns about the lock. A correct password resets `failedAttempts` to 0. The counter update runs in its own transaction with a row lock, so parallel attempts cannot skip the limit.
+6. **Session (FR-05, FR-07).** On success the controller stores the Spring Security context in a **new** server-side session (id rotated against session fixation), sent as an HttpOnly, Secure, SameSite=Lax cookie; the idle timeout is 60 minutes. Logout deletes the session. State-changing requests need a CSRF token. The authenticated user id and role come only from this session, never from request bodies.
+
+**Status names.** `AccountStatus` is `PENDING, ACTIVE, LOCKED, SUSPENDED` in code. PENDING is the "inactive until verified" state of FR-03, so the value `INACTIVE` in §1.2.1 / §1.4.2 means the same state; LOCKED is the temporary FR-05 state that the earlier diagrams did not list.
+
+**PA-2 status:** entity, enums, repository, interfaces, DTOs and wiring are committed; `AuthServiceImpl` and the logout endpoint return **501 Not Implemented**. Spring Security, the allow-list/verification-token tables, mail sending and the logic above are T3.1 work, not claimed as working.
 
 #### 2.2.2 `post` module
 
@@ -469,7 +492,29 @@ Implementation notes:
 
 #### 2.2.4 `report` and `admin` modules
 
-<!-- TODO: Furkan (report) -->
+Package `com.unihelp.report` (owner: Furkan): `ReportController` → `ReportService` → `ReportRepository`. Package `com.unihelp.admin`: `AdminController` → `AdminService`, which uses the report repository, the post module and `AuthService.setSuspended`. The admin interface and controller stubs are committed with UC4 (Furkan); the admin boundary rules in Enis's paragraph below apply to them.
+
+| Component | Design / key rule | Requirement |
+|---|---|---|
+| `Report`, `ReportReason` | Post id, reporter id, reason (FRAUD/SPAM/OFFENSIVE_CONTENT/OTHER), optional comment, `reviewed`, `createdAt`. **UNIQUE(post_id, reporter_id)**, so every stored row is a unique report. Never serialized. | FR-25 |
+| `ReportRepository` | `existsByPostIdAndReporterId`, `countByPostIdAndReviewedFalse`, `findByPostIdOrderByCreatedAtAsc`. | FR-25–FR-27 |
+| `ReportService` | `submitReport(postId, reporterId, request)`; constant `HIDE_THRESHOLD = 3`. | FR-25, FR-26 |
+| `AdminService` | `listReportedPosts`, `moderatePost(postId, RESTORE/REMOVE, adminId)`, `setSuspension(userId, suspended, adminId)`. | FR-27, FR-28 |
+| DTOs | `CreateReportRequest`, `ReportResponse`; admin `ReportedPostDto`, `ReportEntryDto`, `ModeratePostRequest`, `SuspensionRequest`, `AccountStatusDto`. All alias-only, no e-mail (checked by `AuthDtoPrivacyTest`). | NFR-04 |
+
+**Core logic — unique reports and auto-hide (T3.9).** One transaction per report:
+
+1. The reporter id comes from the session. The post must exist and be visible to the reporter (ACTIVE or RESOLVED), otherwise 404. The post row is locked (`SELECT … FOR UPDATE` through the post module), so parallel reports on the same post are counted one after another.
+2. If `existsByPostIdAndReporterId` is true → 409 *"You have already reported this post."* (FR-25). A concurrent duplicate that passes the check is stopped by the UNIQUE constraint and mapped to the same 409.
+3. The comment is sanitized like post text, then the report is saved.
+4. `count = countByPostIdAndReviewedFalse(postId)`. If **`count > 3`** (the 4th unique report, not the 3rd) and the post is not already HIDDEN, the post status becomes HIDDEN through a post-module moderation operation (to be added to the post service boundary in T3.9/T3.10; the current `PostService` has no such method). HIDDEN posts are excluded from feed, search and other students' detail reads by the post module (FR-26).
+5. **Admin alert:** the post appears in the admin queue with `alert = true` (HIDDEN and with unreviewed reports), sorted first. This flag is derived from stored data, so no alert is lost if the server restarts. It ends when the administrator restores or removes the post.
+
+Only **unreviewed** reports count. After an administrator restores a post, its reports are marked reviewed and the counter starts again from 0. Earlier reporters still cannot report the same post again because of the UNIQUE constraint. The response to the reporter never shows the report count or whether the post was hidden, so the threshold cannot be probed.
+
+**Core logic — admin review and suspension (T3.10).** Restore sets HIDDEN → ACTIVE and marks all reports of the post reviewed in one transaction. Restore on a post that is not HIDDEN but has open reports only marks them reviewed (dismiss). Remove deletes the post with its dependent data (see Enis's paragraph). Suspension calls `AuthService.setSuspended`: ACTIVE/LOCKED → SUSPENDED, and every open session of that user is deleted immediately (§4.1.3). Unsuspension sets SUSPENDED → ACTIVE with `failedAttempts = 0`. Repeating the current state is a no-op (200). Each action is attributed to the admin id from the session and written to `audit_log` (FR-29, Could). It also triggers the FR-22 notification e-mail to the affected user (T3.7).
+
+**PA-2 status:** entities, repository, interfaces, DTOs and controller/service stubs are committed; the stubs return **501 Not Implemented**.
 
 **Admin design contribution (Enis).** `admin` is a service boundary inside the monolith, not a separate application. Controllers require ADMIN in Spring Security, and service entry points repeat authorization for non-HTTP callers. A review transaction locks the post, reads its reports, then either restores it to ACTIVE and marks reports reviewed or permanently removes it and its dependent data (FR-27). Suspension/unsuspension changes the target user's account state through auth; suspended accounts cannot authenticate (FR-28). Each administrator action records actor id, action, target and time in `audit_log` (FR-29, Could), without copying personal contact data. Furkan owns UC4's report/threshold scenario; this paragraph defines Enis's admin boundary. Implementation is T3.10, not PA-2.
 
@@ -477,7 +522,61 @@ Implementation notes:
 
 #### 2.3.1 `auth` module
 
-<!-- TODO: Furkan -->
+**Service interfaces** (`backend/src/main/java/com/unihelp/auth/`):
+
+```java
+public interface AuthService extends UserQuery {
+    int MAX_FAILED_ATTEMPTS = 5;
+    Duration LOCK_DURATION = Duration.ofMinutes(15);
+    Duration VERIFICATION_TOKEN_TTL = Duration.ofHours(24);
+
+    MessageResponse register(RegisterRequest request);
+    MessageResponse verify(String token);
+    AccountDto login(LoginRequest request);
+    AccountDto getOwnAccount(Long currentUserId);
+    AccountStatus setSuspended(Long userId, boolean suspended);   // used by admin (FR-28)
+}
+
+public interface UserQuery {
+    String getDisplayAlias(Long userId);                          // alias only, never e-mail
+}
+```
+
+| DTO | Fields / validation |
+|---|---|
+| `RegisterRequest` | `email` (required, e-mail format, ≤ 254); `password` (required, 8–72 chars, ≥ 1 uppercase and ≥ 1 digit) |
+| `LoginRequest` | `email` (required, ≤ 254); `password` (required, ≤ 72) |
+| `MessageResponse` | `message` (confirmation text, no personal data) |
+| `AccountDto` | `email`, `displayAlias`, `role`, `status`, `notificationsEnabled`. **Own profile only.** |
+
+**Controller signatures** (`AuthController.java`, base `/api/auth`):
+
+```java
+MessageResponse register(RegisterRequest request);
+MessageResponse verify(String token);
+AccountDto login(LoginRequest request);
+void logout();
+```
+
+| Method & path | Request | Success | Errors |
+|---|---|---|---|
+| `POST /api/auth/register` | `{ "email", "password" }` | **201** + `{ "message": "Verification e-mail sent. Please check your inbox." }`; account PENDING | **400** domain not allowed: *"A verified university e-mail address is required"*, no user created (FR-01) · **400** invalid e-mail/password policy (FR-02) · **409** e-mail already registered (FR-02) |
+| `GET /api/auth/verify?token=` | Raw token from the e-mail link | **200** + `{ "message": "E-mail verified. You can now log in." }`; PENDING → ACTIVE | **400** missing, unknown or already used token · **410** token older than 24 hours (FR-03) |
+| `POST /api/auth/login` | `{ "email", "password" }` | **200** + `AccountDto` (own profile) and `Set-Cookie` with a new HttpOnly session cookie | **400** missing fields · **401** *"Invalid e-mail or password"* (also for unknown e-mail) · **403** *"Please verify your e-mail address first"* (PENDING) · **403** *"Your account is suspended"* (FR-28) · **423** *"Account locked. Try again in 15 minutes."* on the 5th consecutive failure and on every attempt during the lock (FR-05) |
+| `POST /api/auth/logout` | No body; session cookie + CSRF token | **204**; session deleted, cookie cleared; repeated logout is also 204 | **403** missing/invalid CSRF token |
+
+Register, verify and login are the only endpoints open to guests. All other `/api/**` endpoints return **401** without a valid session and **403** without the required role (§1.2). Errors use Spring's RFC 9457 Problem Details body; its `detail` field holds the message shown to the user. Example:
+
+```json
+// POST /api/auth/register  { "email": "ali@gmail.com", "password": "Secret123" }
+// 400 Bad Request
+{ "status": 400, "title": "Bad Request", "detail": "A verified university e-mail address is required" }
+
+// POST /api/auth/login  { "email": "a.student@etu.edu.tr", "password": "Secret123" }
+// 200 OK  (Set-Cookie: SESSION=…; HttpOnly; Secure; SameSite=Lax)
+{ "email": "a.student@etu.edu.tr", "displayAlias": "BlueOwl482", "role": "STUDENT",
+  "status": "ACTIVE", "notificationsEnabled": true }
+```
 
 #### 2.3.2 `post` module
 
@@ -614,7 +713,56 @@ Example — `POST /api/posts/42/conversations`:
 
 #### 2.3.4 `report` and `admin` modules
 
-<!-- TODO: Furkan (report) -->
+**Service interfaces** (`backend/src/main/java/com/unihelp/report/ReportService.java`, `…/admin/AdminService.java`):
+
+```java
+public interface ReportService {
+    int HIDE_THRESHOLD = 3;                 // HIDDEN when unique reports > 3
+    ReportResponse submitReport(Long postId, Long reporterId, CreateReportRequest request);
+}
+
+public interface AdminService {
+    Page<ReportedPostDto> listReportedPosts(Pageable page);
+    ReportedPostDto moderatePost(Long postId, ModerationAction action, Long adminId);  // RESTORE | REMOVE
+    AccountStatusDto setSuspension(Long userId, boolean suspended, Long adminId);
+}
+```
+
+| DTO | Fields / validation |
+|---|---|
+| `CreateReportRequest` | `reason` (required: FRAUD, SPAM, OFFENSIVE_CONTENT, OTHER); `comment` (optional, ≤ 500 chars). No reporter id is writable. |
+| `ReportResponse` | `reportId`, `postId`, `reason`, `createdAt` (no count, no hidden flag) |
+| `ReportedPostDto` | `postId`, `title`, `status`, `authorId`, `authorAlias`, `openReportCount`, `alert`, `reports[]` |
+| `ReportEntryDto` | `reportId`, `reason`, `comment`, `reporterAlias`, `reviewed`, `createdAt` |
+| `ModeratePostRequest` | `action` (required: RESTORE or REMOVE) |
+| `SuspensionRequest` | `suspended` (required boolean) |
+| `AccountStatusDto` | `userId`, `displayAlias`, `status` |
+
+`authorId` is returned only on ADMIN endpoints, so an administrator can suspend the author. E-mail addresses are never returned.
+
+| Method & path | Request | Success | Errors |
+|---|---|---|---|
+| `POST /api/posts/{id}/reports` | `CreateReportRequest` | **201** + `ReportResponse` | **400** missing/invalid reason or comment too long · **401** no session · **404** post missing, HIDDEN, ARCHIVED or otherwise not visible · **409** *"You have already reported this post."* (FR-25) |
+| `GET /api/admin/reports?page=` | Zero-based page, 20 per page | **200** + `Page<ReportedPostDto>`: every HIDDEN post and every post with unreviewed reports; `alert = true` entries first, then by open report count and newest report | **401** · **403** not ADMIN · **400** invalid page |
+| `PATCH /api/admin/posts/{id}` | `{ "action": "RESTORE" }` or `{ "action": "REMOVE" }` | RESTORE → **200** + `ReportedPostDto` (status ACTIVE, `openReportCount` 0, `alert` false). REMOVE → **204**, post and dependent data deleted | **400** invalid action · **401** · **403** · **404** post missing · **409** RESTORE on a post that is neither HIDDEN nor has open reports, or that is ARCHIVED |
+| `PATCH /api/admin/users/{id}/suspension` | `{ "suspended": true }` or `{ "suspended": false }` | **200** + `AccountStatusDto`; suspend ends all the user's sessions; repeating the current state is a no-op | **400** missing body field · **401** · **403** · **404** user missing · **409** target is PENDING, an ADMIN account or the caller |
+
+Example — fourth unique report on post 42, then admin review:
+
+```json
+// POST /api/posts/42/reports  (as the 4th different student)
+{ "reason": "FRAUD", "comment": "Asks for a deposit before returning the item." }
+// 201 Created
+{ "reportId": 118, "postId": 42, "reason": "FRAUD", "createdAt": "2026-11-20T10:15:00Z" }
+
+// GET /api/admin/reports?page=0  → 200 OK (content[0])
+{ "postId": 42, "title": "Lost blue umbrella", "status": "HIDDEN", "authorId": 7,
+  "authorAlias": "BlueOwl482", "openReportCount": 4, "alert": true, "reports": [ … ] }
+
+// PATCH /api/admin/posts/42  { "action": "RESTORE" }  → 200 OK, status "ACTIVE", "alert": false
+```
+
+**Alignment with the planned admin table below.** The committed `AdminController` uses the endpoints above. `GET /api/admin/reports` covers the planned `GET /api/admin/posts`. `PATCH /api/admin/posts/{id}` with an `action` body covers the planned `PATCH …/restore` and `DELETE /api/admin/posts/{id}`. `GET /api/admin/audit-log` stays as planned (FR-29, Could). The suspension endpoint is the same, but it returns 200 with `AccountStatusDto` so the admin panel can show the new state.
 
 **Planned admin interface (Enis, T3.10).** `AdminService` operations are `listReportedPosts(page)`, `restorePost(postId, adminId)`, `removePost(postId, adminId)`, `setSuspended(userId, suspended, adminId)` and `listAuditLog(page)`. These are design signatures, not new compiled classes in this step.
 
@@ -642,7 +790,142 @@ Each mutation is attributed to the authenticated admin id, never a body field. P
 
 ### 3.2 UC1 Design — Register, verify & log in with university e-mail
 
-<!-- TODO: Furkan (FR-01 – FR-05) -->
+**Requirements:** FR-01–FR-05 · NFR-01, NFR-02, NFR-04 · **Primary actor:** Guest (becomes Student) · **Secondary actor:** E-mail service · **Modules:** `auth` (Furkan)
+
+**Scenario:**
+
+1. The guest opens the register page and enters a university e-mail address and a password.
+2. The system checks the domain against the allow-list (FR-01) and the password policy and duplicate e-mail rule (FR-02). It stores a PENDING account with a BCrypt hash and a generated display alias (FR-04), then e-mails a verification link that is valid for 24 hours (FR-03).
+3. The guest opens the link; the account becomes ACTIVE.
+4. The student logs in with e-mail and password and gets a session; the app shows their display alias. The student can log out at any time (FR-05).
+
+**Alternative flows:**
+
+- 2a. Domain not allowed (e.g. `@gmail.com`): 400 *"A verified university e-mail address is required"*, no user record (FR-01, TC-01).
+- 2b. Weak password: 400 with the policy message. E-mail already registered: 409 (FR-02).
+- 3a. Link used again or unknown: 400. Link older than 24 hours: 410; the student registers again, which replaces the expired PENDING account.
+- 4a. Login before verification: 403 *"Please verify your e-mail address first"* (FR-03).
+- 4b. Wrong password: 401 and `failedAttempts + 1`. The 5th consecutive failure locks the account for 15 minutes and returns 423; during the lock every attempt returns 423, even with the correct password (FR-05, TC-02).
+- 4c. Suspended account: 403 *"Your account is suspended"* (FR-28).
+
+#### 3.2.1 Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor G as Guest / Student
+    participant UI as React SPA
+    participant AC as AuthController
+    participant AS as AuthService
+    participant UR as UserRepository
+    participant DB as PostgreSQL
+    participant MAIL as E-mail service
+
+    Note over G,MAIL: Register (FR-01, FR-02, FR-04)
+    G->>UI: Enter e-mail + password
+    UI->>AC: POST /api/auth/register {email, password}
+    AC->>AC: Bean Validation (format, 8+ chars, uppercase, digit)
+    AC->>AS: register(request)
+    AS->>DB: Is normalized domain in allowed_domains?
+    alt domain not allowed
+        AS-->>AC: reject before any write
+        AC-->>UI: 400 "A verified university e-mail address is required"
+    else e-mail already registered
+        AS->>UR: existsByEmail(email)
+        UR-->>AS: true
+        AC-->>UI: 409 Conflict
+    else valid
+        AS->>AS: BCrypt hash, generate unique alias (e.g. BlueOwl482)
+        AS->>UR: save(User PENDING)
+        AS->>DB: INSERT verification token hash, expires_at = now + 24 h
+        AS-->>AC: MessageResponse
+        AC-->>UI: 201 "Verification e-mail sent"
+        AS--)MAIL: after commit: send link /verify?token=raw
+    end
+
+    Note over G,MAIL: Verify (FR-03)
+    MAIL--)G: Verification e-mail
+    G->>UI: Open link
+    UI->>AC: GET /api/auth/verify?token=raw
+    AC->>AS: verify(token)
+    AS->>DB: Find token by SHA-256 hash
+    alt unknown or used
+        AC-->>UI: 400 Invalid verification link
+    else expired (older than 24 h)
+        AC-->>UI: 410 Link expired
+    else valid
+        AS->>DB: mark token used, user PENDING to ACTIVE (one transaction)
+        AC-->>UI: 200 "E-mail verified"
+    end
+
+    Note over G,MAIL: Login (FR-05)
+    G->>UI: Enter e-mail + password
+    UI->>AC: POST /api/auth/login
+    AC->>AS: login(request)
+    AS->>UR: findByEmail(normalized) with row lock
+    UR-->>AS: User
+    alt PENDING or SUSPENDED
+        AC-->>UI: 403 (verify first / account suspended)
+    else LOCKED and lockedUntil in future
+        AC-->>UI: 423 Locked
+    else wrong password
+        AS->>UR: failedAttempts + 1 (5th: LOCKED, lockedUntil = now + 15 min)
+        AC-->>UI: 401 Invalid e-mail or password (423 on the 5th failure)
+    else correct password
+        AS->>UR: failedAttempts = 0
+        AS-->>AC: AccountDto (own profile)
+        AC->>AC: New session id, store security context
+        AC-->>UI: 200 + HttpOnly session cookie
+        UI-->>G: Feed, signed in as BlueOwl482
+    end
+
+    Note over G,MAIL: Logout
+    UI->>AC: POST /api/auth/logout (CSRF token)
+    AC-->>UI: 204, session deleted
+```
+
+#### 3.2.2 Account State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING: register (allowed domain, valid password)
+    PENDING --> ACTIVE: verification link used within 24 h
+    PENDING --> [*]: link expired and e-mail registered again
+    ACTIVE --> ACTIVE: successful login (failedAttempts = 0)
+    ACTIVE --> LOCKED: 5th consecutive failed login
+    LOCKED --> ACTIVE: login attempt after 15 min (counter reset)
+    ACTIVE --> SUSPENDED: admin suspends (sessions ended)
+    LOCKED --> SUSPENDED: admin suspends
+    SUSPENDED --> ACTIVE: admin unsuspends
+    ACTIVE --> [*]: account deleted and anonymized (FR-08)
+```
+
+| State | Can log in? | Left by |
+|---|---|---|
+| PENDING | No: 403 "verify first" | Verification link (→ ACTIVE); expiry + re-registration |
+| ACTIVE | Yes | 5 failed logins (→ LOCKED); suspension (→ SUSPENDED); account deletion |
+| LOCKED | No: 423, even with the correct password | First login attempt after `lockedUntil` (→ ACTIVE); suspension |
+| SUSPENDED | No: 403 "Your account is suspended" | Admin unsuspends (→ ACTIVE) |
+
+A lock ends without a scheduled job: the next login attempt after `lockedUntil` moves the account back to ACTIVE before the password is checked.
+
+#### 3.2.3 Data Flow and Security
+
+```mermaid
+flowchart LR
+    F["Register / login form"] -- "HTTPS, TLS 1.2+ (NFR-01)" --> V["AuthController<br/>Bean Validation"]
+    V --> S["AuthService<br/>allow-list, policy, lockout"]
+    S -- "BCrypt hash only (NFR-02)" --> U[("users")]
+    S -- "SHA-256 of token" --> T[("verification_tokens")]
+    S -.->|"raw token, after commit"| M["E-mail service"]
+    S -- "AccountDto (own profile)" --> V
+    V -- "Set-Cookie: HttpOnly session id" --> F
+    S -- "alias only (UserQuery)" --> O["post / message / report / admin"]
+```
+
+- The plain password exists only in memory during the request; it is never stored or logged. The raw verification token exists only in the e-mail.
+- Other modules receive only `userId` from the session and the alias through `UserQuery`. The e-mail address appears in a response only in the user's own `AccountDto` (NFR-04).
+- The same 401 message is returned for an unknown e-mail and a wrong password, so login cannot be used to test which e-mails exist. Registration must still reject duplicates (FR-02).
 
 ### 3.3 UC2 Design — Create and manage a post
 
@@ -892,7 +1175,141 @@ The system never adds e-mail or other contact information to messages. Content t
 
 ### 3.5 UC4 Design — Report a post, auto-hide and admin review
 
-<!-- TODO: Furkan (FR-25 – FR-28) -->
+**Requirements:** FR-25–FR-28 · NFR-03, NFR-04 · **Primary actor:** Student (reporter) · **Secondary actor:** Administrator · **Modules:** `report` (Furkan), `admin` (UC4 stubs Furkan, admin boundary Enis), `post` (status change and visibility, Enis), `auth` (suspension)
+
+**Scenario:**
+
+1. A student opens a post detail page, chooses **Report**, selects a reason (Fraud, Spam, Offensive content, Other) and optionally writes a comment (FR-25).
+2. The system stores the report. When the post has **more than 3** unique unreviewed reports, the system sets it to HIDDEN, removes it from the feed and search results and raises an alert for administrators (FR-26).
+3. An administrator opens the admin panel, sees the reported and hidden posts with their reports, and either **restores** the post (ACTIVE, reports reviewed) or **removes** it permanently (FR-27).
+4. If the author is abusive, the administrator suspends the account; the author is logged out at once and cannot log in again until unsuspended (FR-28).
+
+**Alternative flows:**
+
+- 1a. The student already reported this post: 409 *"You have already reported this post."*; no second report is stored (FR-25, TC-05).
+- 1b. The post is missing, HIDDEN or ARCHIVED: 404.
+- 2a. 1–3 unique reports: the post stays visible; it appears in the admin list as reported, without an alert.
+- 3a. A non-admin calls an admin endpoint: 403.
+- 4a. A suspended user tries to log in: 403 *"Your account is suspended"*. The administrator unsuspends: the account returns to ACTIVE.
+
+#### 3.5.1 Sequence Diagram — Report, Threshold and Admin Review
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor R as Student (reporter)
+    participant UI as React SPA
+    participant RC as ReportController
+    participant RS as ReportService
+    participant RR as ReportRepository
+    participant PS as Post module
+    participant DB as PostgreSQL
+    actor A as Administrator
+    participant ADC as AdminController
+    participant ADS as AdminService
+
+    Note over R,ADS: Report a post (FR-25)
+    R->>UI: Report, reason + optional comment
+    UI->>RC: POST /api/posts/42/reports {reason, comment}
+    RC->>RS: submitReport(42, reporterId from session, request)
+    RS->>PS: lock post 42 (SELECT FOR UPDATE), check visible
+    alt missing, HIDDEN or ARCHIVED
+        RC-->>UI: 404 Not Found
+    else already reported by this student
+        RS->>RR: existsByPostIdAndReporterId(42, reporterId)
+        RR-->>RS: true
+        RC-->>UI: 409 "You have already reported this post."
+    else new unique report
+        RS->>RR: save(Report, comment sanitized)
+        RS->>RR: countByPostIdAndReviewedFalse(42)
+        RR-->>RS: count
+        opt count > 3 (4th unique report)
+            RS->>PS: set status HIDDEN (moderation)
+            PS->>DB: UPDATE posts SET status = HIDDEN
+            Note over RS,DB: Post leaves feed and search, admin alert = HIDDEN with open reports
+        end
+        RS-->>RC: ReportResponse (no count)
+        RC-->>UI: 201 Created
+    end
+
+    Note over R,ADS: Admin review (FR-27)
+    A->>UI: Open admin panel
+    UI->>ADC: GET /api/admin/reports?page=0
+    ADC->>ADS: listReportedPosts(page)
+    ADS->>RR: reports per post
+    ADS-->>ADC: Page of ReportedPostDto (alert first)
+    ADC-->>UI: 200 OK
+    A->>UI: Restore or Remove post 42
+    UI->>ADC: PATCH /api/admin/posts/42 {action}
+    ADC->>ADS: moderatePost(42, action, adminId)
+    alt RESTORE
+        ADS->>PS: HIDDEN to ACTIVE
+        ADS->>RR: mark all reports of post 42 reviewed
+        ADS->>DB: audit_log (admin, RESTORE, post 42)
+        ADC-->>UI: 200 + ReportedPostDto (ACTIVE, alert false)
+    else REMOVE
+        ADS->>PS: delete post 42 with dependent data
+        ADS->>DB: audit_log (admin, REMOVE, post 42)
+        ADC-->>UI: 204 No Content
+    end
+```
+
+#### 3.5.2 Post Status Changes in UC4
+
+UC4 uses only these transitions of the full post state machine in §3.3.1:
+
+```mermaid
+stateDiagram-v2
+    ACTIVE --> ACTIVE: 1st to 3rd unique report (still visible)
+    RESOLVED --> RESOLVED: 1st to 3rd unique report
+    ACTIVE --> HIDDEN: 4th unique unreviewed report
+    RESOLVED --> HIDDEN: 4th unique unreviewed report
+    HIDDEN --> ACTIVE: admin RESTORE (reports reviewed, counter restarts)
+    HIDDEN --> [*]: admin REMOVE (permanent)
+    ACTIVE --> [*]: admin REMOVE (permanent)
+    RESOLVED --> [*]: admin REMOVE (permanent)
+```
+
+| Unreviewed unique reports | Post status | In feed / search? | In admin list? |
+|---|---|---|---|
+| 0 | ACTIVE / RESOLVED | Yes (by its normal rules) | No |
+| 1–3 | unchanged | Yes | Yes, `alert = false` |
+| 4 or more | HIDDEN | No | Yes, `alert = true`, sorted first |
+| after RESTORE | ACTIVE, all reports reviewed | Yes | No, until new reports arrive |
+
+#### 3.5.3 Admin Suspension Flow (FR-28)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Administrator
+    participant ADC as AdminController
+    participant ADS as AdminService
+    participant AS as AuthService
+    participant SS as Session store
+    actor U as Suspended student
+    participant AC as AuthController
+
+    A->>ADC: PATCH /api/admin/users/7/suspension {suspended: true}
+    ADC->>ADS: setSuspension(7, true, adminId)
+    alt target is PENDING, ADMIN or the caller
+        ADC-->>A: 409 Conflict
+    else allowed
+        ADS->>AS: setSuspended(7, true)
+        AS->>AS: ACTIVE or LOCKED to SUSPENDED
+        AS->>SS: delete all sessions of user 7
+        ADS->>ADS: audit_log + FR-22 notification e-mail
+        ADC-->>A: 200 {userId 7, BlueOwl482, SUSPENDED}
+    end
+    U->>AC: next request or POST /api/auth/login
+    AC-->>U: 401 (session gone) / 403 "Your account is suspended"
+    A->>ADC: PATCH /api/admin/users/7/suspension {suspended: false}
+    ADC->>ADS: setSuspension(7, false, adminId)
+    ADS->>AS: setSuspended(7, false), SUSPENDED to ACTIVE, failedAttempts = 0
+    ADC-->>A: 200 {userId 7, BlueOwl482, ACTIVE}
+```
+
+Suspension takes effect at once because sessions are stored on the server and deleted (§4.1.3). The suspended user's posts keep their state; the administrator can moderate them separately.
 
 ---
 
@@ -928,6 +1345,25 @@ Committed comparable queries: [`JpaPostQuery.java`](tech-comparison/JpaPostQuery
 
 The comparison uses the actual architecture in §1.2 and the module contracts in §2.3. It does not introduce messaging brokers, service discovery or a second deployment stack.
 
+#### 4.1.3 Authentication: Stateless JWT vs. Server-Side Session (Furkan)
+
+PA-1 fixes Spring Security and "session handling" (Project Definition §3, §8.2) and lists JWT as a learning topic (§8.5). This comparison decides how a logged-in user is recognized on each request.
+
+| Criterion | Stateless JWT (bearer token) | Server-side session (Spring Security + Spring Session JDBC) |
+|---|---|---|
+| Logout (FR-05) | Token stays valid until `exp`; real logout needs a server-side denylist | Session deleted on the server; the cookie stops working at once |
+| Suspension takes effect (FR-28) | Suspended user keeps access until the token expires, unless every request also checks the user's status in the database | All sessions of the user are deleted at suspension time (`findByPrincipalName` → delete) |
+| 60-minute inactivity timeout (FR-07) | Needs short access tokens + rotating refresh tokens to emulate a sliding idle timeout | Built in: `server.servlet.session.timeout=60m`, renewed on each request |
+| Storage in the browser / XSS | Token must be readable by JavaScript (memory or `localStorage`); an XSS bug can steal it | Opaque id in an HttpOnly, Secure, SameSite cookie; JavaScript cannot read it |
+| CSRF | Not needed when sent in the `Authorization` header | Needed; Spring Security `CookieCsrfTokenRepository` with the SPA sending `X-XSRF-TOKEN` |
+| Privacy (NFR-04) | Payload is only Base64; it must never contain the e-mail | Session id carries no data |
+| Server state and scaling | No session store; any instance can verify the token | Session rows in the existing PostgreSQL; one instance (NFR-11 scale) needs no extra store, and sessions survive restarts of a free-tier host |
+| Per-request cost | Signature check only | One indexed session look-up; not expected to matter at 50 concurrent users (to be confirmed by the k6 test) |
+| Team effort and risk (Risk R1) | Key management, refresh-token flow, denylist: more custom security code | Mostly Spring Security defaults; less custom code to get wrong |
+| Decision | Rejected | **Selected** |
+
+**Result.** UniHelp is one monolith serving one campus, so the main advantage of JWT does not apply: no session store shared between many services or instances. The requirements that matter here are immediate logout and suspension, a 60-minute idle timeout and minimal exposure to XSS, and the server-side session handles all of them with Spring Security defaults. Sessions are kept in the existing PostgreSQL through Spring Session JDBC, so no new infrastructure is needed. The extra CSRF protection is a known, built-in Spring Security feature. Committed comparable snippets: [`SessionAuthConfig.java`](tech-comparison/SessionAuthConfig.java) and [`JwtAuthConfig.java`](tech-comparison/JwtAuthConfig.java), explained in [`README.md`](tech-comparison/README.md). They are design artifacts outside the Maven build; no latency was measured.
+
 <!-- TODO: team — add only any remaining technology comparisons assigned to other members. -->
 
 ### 4.2 Justifications
@@ -935,6 +1371,16 @@ The comparison uses the actual architecture in §1.2 and the module contracts in
 **Database (Enis).** PostgreSQL matches the relational data and integrity rules in §1.2.1. Report uniqueness, post ownership references and transactional moderation are central to the selected use cases. Spring Data JPA is already in PA-1 and the repository skeleton; using it avoids changing the agreed stack. Feed/search latency remains an acceptance criterion to verify, not an assumed benefit of SQL.
 
 **Architecture (Enis).** A layered monolith directly satisfies NFR-10 and PA-1's single-campus scope. It keeps post, report and message transactions local and gives the four-person team one deployment/CI path. Feature packages and interfaces retain clear module boundaries without separate services. The 5,000-user/20,000-post and 50-concurrent-user targets do not establish a requirement for independent services; k6 results will guide tuning within the selected architecture.
+
+**Backend framework: Spring Boot + Spring Security (Furkan).** Java 21 with Spring Boot and Spring Security was selected in the Concept Note and PA-1 (Requirements §5, Project Definition §8.2). It fits the design for these reasons:
+
+- *Layering (NFR-10).* Spring MVC controllers, `@Service` classes and Spring Data repositories map directly onto the controller → service → repository rule. Constructor injection makes each service unit-testable with Mockito.
+- *Security requirements are covered by maintained components, not custom code.* `BCryptPasswordEncoder` for NFR-02; the security filter chain for authentication and role checks (`/api/admin/**` → ADMIN); session-fixation protection, the 60-minute session timeout and CSRF tokens for FR-05/FR-07; Bean Validation for request limits. Risk R5 in PA-1 names "Spring Security defaults" as a mitigation.
+- *Transactions.* `@Transactional` with JPA row locks covers the atomic parts of UC1 and UC4: the lockout counter, verification, and the report → count → hide sequence.
+- *Testing and CI.* Spring Boot Test with MockMvc and H2/Testcontainers runs the TC-01/TC-02/TC-05 API tests inside `mvn verify` on GitHub Actions.
+- *Team and deployment.* A single executable JAR in Docker is enough for free-tier hosting, and the Spring documentation is the main learning resource in PA-1 §8.5.
+
+Alternatives such as Node.js/Express or Django would mean a different language and security stack from the agreed PA-1 plan and the existing skeleton, without helping any requirement. **Authentication** uses server-side sessions, as decided in §4.1.3.
 
 <!-- TODO: team — add justifications for choices owned by other members. -->
 
@@ -954,6 +1400,19 @@ The comparison uses the actual architecture in §1.2 and the module contracts in
 | Architecture/ER, UC2 diagrams, post/admin API contracts, decision tables | This document §§1.2, 2.1.1, 2.2.2, 2.2.4, 2.3.2, 2.3.4, 3.3, 4 |
 | Performance workload and ownership test case | `docs/qa/UniHelp_QA_Plan.md` §2.1 and TC-03 |
 
+**Furkan's committed artifacts:**
+
+| Artifact | Repository path |
+|---|---|
+| User entity, role/status enums, repository | `backend/src/main/java/com/unihelp/auth/{User,Role,AccountStatus,UserRepository}.java` |
+| Auth service/query interfaces, controller and service stubs, DTOs | `backend/src/main/java/com/unihelp/auth/{AuthService,UserQuery,AuthServiceImpl,AuthController}.java`, `…/auth/dto/` |
+| Report entity, reason enum, repository, service interface, controller and service stubs, DTOs | `backend/src/main/java/com/unihelp/report/`, `…/report/dto/` |
+| Admin service interface, moderation action, controller and service stubs, DTOs | `backend/src/main/java/com/unihelp/admin/`, `…/admin/dto/` |
+| No-e-mail check for auth/report/admin response DTOs | `backend/src/test/java/com/unihelp/auth/AuthDtoPrivacyTest.java` |
+| JWT vs. session comparison snippets and README section | `docs/design/tech-comparison/{SessionAuthConfig,JwtAuthConfig}.java`, `README.md` |
+| Description, auth/report/admin design and API, UC1/UC4 diagrams, auth decision, framework justification | This document §§1.1, 2.2.1, 2.2.4, 2.3.1, 2.3.4, 3.2, 3.5, 4.1.3, 4.2 |
+| Security metrics and test cases TC-01, TC-02, TC-05 | `docs/qa/UniHelp_QA_Plan.md` §2.2, §3.1 |
+
 <!-- TODO: team — list remaining committed artifacts owned by other members. -->
 
 ---
@@ -966,27 +1425,29 @@ R = Responsible (wrote the section), C = Contributed / reviewed.
 |---|:-:|:-:|:-:|:-:|
 | Document skeleton and structure | | R | C | |
 | Contributors list and Table of Contents | | | | |
-| 1.1 Description | | | | |
+| 1.1 Description | R | | | |
 | 1.2 Architecture | | | R | |
 | 1.3 Technology Stack | | R | C | |
 | 1.4 UML Overview (use case and class diagrams) | | R | C | |
 | 2.1 Codebase Structure — backend | | | R | |
 | 2.1 Codebase Structure — frontend | | | | |
-| 2.2 / 2.3 `auth` module | | | | |
+| 2.2 / 2.3 `auth` module | R | | | |
 | 2.2 / 2.3 `post` module | | | R | |
 | 2.2 / 2.3 `message` module | | R | C | |
-| 2.2 / 2.3 `report` and `admin` modules | | | C | |
+| 2.2 / 2.3 `report` and `admin` modules | R | | C | |
 | 2.4 Visual Interfaces (wireframes) | | | | |
 | 3.1 Use Case Selection & Requirement Mapping | | | | |
-| 3.2 UC1 Design | | | | |
+| 3.2 UC1 Design | R | | | |
 | 3.3 UC2 Design | | | R | |
 | 3.4 UC3 Design | | R | C | |
-| 3.5 UC4 Design | | | | |
-| 4.1 Technology Comparisons | | | R | |
-| 4.2 Justifications | | | R | |
-| 5 Repository Artifacts | | | R | |
+| 3.5 UC4 Design | R | | | |
+| 4.1 Technology Comparisons | R | | R | |
+| 4.2 Justifications | R | | R | |
+| 5 Repository Artifacts | C | | R | |
 | Code: repository skeleton, Docker Compose, CI | | R | C | |
 | Code: `message` module interfaces and stubs | | R | | |
 | Code: `post` entities, interfaces, DTOs and stubs | | | R | |
 | Code: database comparison snippets | | | R | |
+| Code: `auth`, `report`, `admin` entities, interfaces, DTOs and stubs | R | | | |
+| Code: authentication (JWT vs. session) comparison snippets | R | | | |
 | Database schema / ER design | | | R | |
