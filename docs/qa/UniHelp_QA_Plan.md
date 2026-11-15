@@ -10,18 +10,36 @@
 
 ## Contributors
 
-<!-- TODO: Taha — finalize the contributors list (name, role, sections written) for the first page. -->
-
-| Name | Role |
-|---|---|
-| Furkan Yılmaz | |
-| Efe Deniz Kahvecioğlu | QA / Test Lead |
-| Enis Talha Öztepe | |
-| Muhammed Taha Kaya | |
+| Name | Role | GitHub | Sections Written |
+|---|---|---|---|
+| Furkan Yılmaz | Project Manager, Backend Developer (Authentication, Security, Reporting, Notifications) | `@furylmz` | §§1.1, 2.2.1, 2.2.4, 2.3.1, 2.3.4, 3.2, 3.5, 4.1.3, 4.2, 5 |
+| Efe Deniz Kahvecioğlu | QA / Test Lead, DevOps Engineer, Backend Developer (Messaging, Data Lifecycle) | `@efed3n1z` | §§1.3, 1.4, 2.2.3, 2.3.3, 3.4 |
+| Enis Talha Öztepe | Software Architect, Backend Developer (Posts, Search, Admin, Database) | `@enisoztepe` | §§1.2, 2.1.1, 2.2.2, 2.2.4, 2.3.2, 2.3.4, 3.3, 4.1.1, 4.1.2, 4.2, 5 |
+| Muhammed Taha Kaya | Requirements Analyst, UI/UX Designer, Frontend Developer | `@mt-kaya` | §§2.1.2, 2.3.5, 2.4, 3.1, 4.1.4, 4.2, 5, Wireframes, ToC & Final Review |
 
 ## Table of Contents
 
-<!-- TODO: Taha — finalize the table of contents after all sections are written. -->
+1. [System Overview](#1-system-overview)
+   1. [Description](#11-description)
+   2. [Architecture](#12-architecture)
+   3. [Technology Stack](#13-technology-stack)
+   4. [UML Overview](#14-uml-overview)
+2. [Implementation Details](#2-implementation-details)
+   1. [Codebase Structure](#21-codebase-structure)
+   2. [Key Implementations](#22-key-implementations)
+   3. [Component Interfaces & API Endpoints](#23-component-interfaces--api-endpoints)
+   4. [Visual Interfaces](#24-visual-interfaces)
+3. [Use Case Support](#3-use-case-support)
+   1. [Use Case Selection & Requirement Mapping](#31-use-case-selection--requirement-mapping)
+   2. [UC1 Design — Register, verify & log in](#32-uc1-design--register-verify--log-in-with-university-e-mail)
+   3. [UC2 Design — Create and manage a post](#33-uc2-design--create-and-manage-a-post)
+   4. [UC3 Design — Search the feed and contact the author anonymously](#34-uc3-design--search-the-feed-and-contact-the-author-anonymously)
+   5. [UC4 Design — Report a post, auto-hide and admin review](#35-uc4-design--report-a-post-auto-hide-and-admin-review)
+4. [Design Decisions](#4-design-decisions)
+   1. [Technology Comparisons](#41-technology-comparisons)
+   2. [Justifications](#42-justifications)
+5. [Repository Artifacts](#5-repository-artifacts)
+6. [Task Matrix](#task-matrix)
 
 1. [Quality Assurance Strategy](#1-quality-assurance-strategy)
    1. [Overview](#11-overview)
@@ -101,7 +119,7 @@ Roles: Efe (QA / Test Lead) owns this plan, unit/integration tests and the test 
 |---|---|---|---|---|
 | Performance | Feed/search responsiveness under representative campus load | p95 HTTP response time per feed and search scenario, with 50 concurrent users and seeded data | p95 < 2,000 ms for each scenario; support 5,000 users / 20,000 posts | Enis |
 | Security | Resistance to the OWASP Top 10 risks relevant to UniHelp (XSS, injection, broken authentication/access control) | (S1) number of **High**-risk alerts in the OWASP ZAP baseline scan; (S2) number of **open critical/high security bugs** | S1 = 0 and S2 = 0 before release (NFR-03) | Furkan |
-| Usability | <!-- TODO: Taha --> | | | Taha |
+| Usability | Efficiency, intuitiveness and user satisfaction during campus interactions | Task completion rate, task duration, and System Usability Scale (SUS) / satisfaction score from moderated sessions with at least 10 students | ≥ 90 % task completion within 3 minutes per core flow; average satisfaction ≥ 80 % ("easy" or "very easy") | Taha |
 | Maintainability | Ease of understanding, changing and testing the codebase | Service-layer line coverage (JaCoCo) and cyclomatic complexity per method | Coverage ≥ 70 %; complexity ≤ 10 per method | Efe |
 
 ### 2.1 Performance
@@ -170,9 +188,16 @@ thresholds: {
 
 The PA-2 endpoints are stubs, so no scan result or security compliance is claimed at this stage.
 
-### 2.3 Usability
+### 2.3 Usability 
 
-<!-- TODO: Taha -->
+**Related requirement:** NFR-06 (intuitive user experience, clear feedback, accessible forms).
+
+- **Moderated User Testing Sessions:** Conducted with at least 10 students performing representative tasks (registering an account, publishing a lost item post, searching the feed, initiating an anonymous conversation).
+- **Success Metrics:**
+  - **Task Completion Rate:** ≥ 90 % of participants complete each core flow without moderator assistance.
+  - **Time on Task:** Core flows (e.g., creating a post or sending a message) completed in under 3 minutes.
+  - **User Satisfaction Survey:** Post-test questionnaire measuring perceived ease of use; target average score ≥ 80 % positive responses.
+- **Accessibility Verification (NFR-07):** Lighthouse Accessibility audit score ≥ 90, combined with manual keyboard-only navigation (`Tab` / `Shift+Tab`) and screen-reader compatibility checks across viewports (`360 px – 1920 px`).
 
 ### 2.4 Maintainability
 
