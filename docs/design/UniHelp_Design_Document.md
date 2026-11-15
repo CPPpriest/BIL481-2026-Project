@@ -5,23 +5,19 @@
 | **Course** | BIL 481 Software Engineering — Project Assignment 2 |
 | **Project** | UniHelp — Campus Helping Platform |
 | **Document** | Design Document |
-| **Version** | 0.1 (draft) |
+| **Version** | 1.0 (Final) |
 | **Due date** | 15-11-2026 |
 
 ## Contributors
 
-<!-- TODO: Taha — finalize the contributors list (name, role, sections written) for the first page. -->
-
-| Name | Role |
-|---|---|
-| Furkan Yılmaz | |
-| Efe Deniz Kahvecioğlu | |
-| Enis Talha Öztepe | |
-| Muhammed Taha Kaya | |
+| Name | Role | GitHub | Sections Written |
+|---|---|---|---|
+| Furkan Yılmaz | Project Manager, Backend Developer (Authentication, Security, Reporting, Notifications) | `@furylmz` | §§1.1, 2.2.1, 2.2.4, 2.3.1, 2.3.4, 3.2, 3.5, 4.1.3, 4.2, 5 |
+| Efe Deniz Kahvecioğlu | QA / Test Lead, DevOps Engineer, Backend Developer (Messaging, Data Lifecycle) | `@efed3n1z` | §§1.3, 1.4, 2.2.3, 2.3.3, 3.4 |
+| Enis Talha Öztepe | Software Architect, Backend Developer (Posts, Search, Admin, Database) | `@enisoztepe` | §§1.2, 2.1.1, 2.2.2, 2.2.4, 2.3.2, 2.3.4, 3.3, 4.1.1, 4.1.2, 4.2, 5 |
+| Muhammed Taha Kaya | Requirements Analyst, UI/UX Designer, Frontend Developer | `@mt-kaya` | §§2.1.2, 2.3.5, 2.4, 3.1, 4.1.4, 4.2, 5, Wireframes, ToC & Final Review |
 
 ## Table of Contents
-
-<!-- TODO: Taha — finalize the table of contents after all sections are written. -->
 
 1. [System Overview](#1-system-overview)
    1. [Description](#11-description)
@@ -209,7 +205,7 @@ All technologies below were selected in the PA-1 documents (Project Definition �
 |---|---|---|---|---|
 | Frontend | React.js | 18.3 | Single-page application, all views | NFR-06, NFR-07, NFR-08 |
 | Frontend | Vite | 6.4 | Dev server and production build of the SPA | — |
-| Frontend | Responsive UI component library | TBD (Taha) | Consistent responsive components (360–1920 px) | NFR-07 |
+| Frontend | React Router + Custom CSS (Grid / Flexbox) | — | Client-side SPA routing and consistent responsive layout (360–1920 px) | NFR-07 |
 | Backend | Java | 21 (LTS) | Backend language | — |
 | Backend | Spring Boot (Web, Validation) | 3.5 | REST API, request validation, layered monolith | NFR-10 |
 | Backend | Spring Security | 6.x (managed by Spring Boot) | Authentication, access control, BCrypt password hashing | FR-01–FR-07, NFR-02, NFR-03 |
@@ -422,7 +418,38 @@ Controllers depend on services, services on repository interfaces; no frontend c
 
 #### 2.1.2 Frontend
 
-<!-- TODO: Taha -->
+Source root: `frontend/`. React 18.3 and Vite 6.4 form a standalone single-page application separated from the Spring Boot source tree. During local development (`vite.config.js`), `/api` calls are proxied to `http://localhost:8080`.
+
+```text
+frontend/
+    index.html
+    package.json
+    vite.config.js
+    src/
+        main.jsx              BrowserRouter and root mount
+        App.jsx               responsive navigation shell and route table
+        styles.css            360–1920 px responsive Grid/Flexbox and focus styles (NFR-07)
+        api/
+            unihelpApi.js     typed fetch wrappers for all §2.3 REST endpoints
+        components/
+            PostCard.jsx      reusable alias-only feed card (FR-14, NFR-04)
+            ReportDialog.jsx  accessible modal dialog for post reporting (FR-25)
+        pages/
+            LoginPage.jsx         university e-mail sign-in and lockout feedback (UC1)
+            RegisterPage.jsx      campus registration and 24 h token verification (UC1)
+            FeedPage.jsx          keyword search, combined filters, pagination (UC3)
+            PostDetailPage.jsx    post detail, author actions, first message box (UC2, UC3)
+            PostFormPage.jsx      create/edit post form with 5 MB image check (UC2)
+            ConversationPage.jsx  inbox list and private alias-only message thread (UC3)
+            AdminReportsPage.jsx  reported/auto-hidden queue and suspension controls (UC4)
+```
+
+| Path | Responsibility | Related requirements | PA-2 status |
+|---|---|---|---|
+| `src/api/unihelpApi.js` | Central HTTP client sending `credentials: 'include'`, echoing `XSRF-TOKEN` as `X-XSRF-TOKEN`, building multipart `post` + `image` payloads, and parsing RFC 9457 `detail` errors | FR-01–FR-05, FR-07, FR-09–FR-17, FR-19–FR-21, FR-25–FR-28, NFR-04 | Committed signatures; verified with `npm run build` |
+| `src/pages/*` | Route-level views for authentication, post CRUD/resolve, feed search/filtering, anonymous messaging and admin moderation | UC1–UC4, FR-01–FR-28, NFR-06, NFR-07 | Committed page skeletons (`T3.3`, `T3.8`, `T3.12` add full state flows) |
+| `src/components/*` | Shared `PostCard` and accessible `ReportDialog` (`role="dialog"`, `aria-modal="true"`) rendering plain escaped text only | FR-13, FR-14, FR-25, NFR-03, NFR-04, NFR-07 | Committed component skeletons |
+| `src/App.jsx`, `src/styles.css` | Top navigation bar, `react-router-dom` route declarations, mobile-first `360 px` to `1920 px` responsive breakpoints and keyboard `:focus-visible` outlines | NFR-06, NFR-07, NFR-08 | Committed and production-bundled |
 
 ### 2.2 Key Implementations
 
@@ -776,17 +803,124 @@ Example — fourth unique report on post 42, then admin review:
 
 Each mutation is attributed to the authenticated admin id, never a body field. Post/report views use display aliases; moderation does not require returning e-mail addresses. Furkan's UC4 defines report submission, duplicate-report responses and auto-hide behaviour.
 
+#### 2.3.5 Frontend Component Interfaces, Routing & API Client
+
+**Client-side route table** (`frontend/src/App.jsx`, `react-router-dom`):
+
+| Route path | Target component | Access / actor | Supported UC & requirements |
+|---|---|---|---|
+| `/` | Redirect → `/feed` | Authenticated Student / Admin | FR-14 |
+| `/login` | `LoginPage` | Guest | UC1 · FR-05, FR-28 |
+| `/register` | `RegisterPage` | Guest | UC1 · FR-01, FR-02, FR-04 |
+| `/verify` (`?token=`) | `RegisterPage` (verification mode) | Guest | UC1 · FR-03 |
+| `/feed` | `FeedPage` | Student / Admin | UC3 · FR-14–FR-16 |
+| `/posts/new` | `PostFormPage` (create mode) | Student / Admin | UC2 · FR-09, FR-10, FR-13 |
+| `/posts/:id` | `PostDetailPage` | Student / Admin | UC2, UC3, UC4 · FR-11, FR-12, FR-17, FR-19, FR-25 |
+| `/posts/:id/edit` | `PostFormPage` (edit mode) | Post Author | UC2 · FR-10, FR-11, FR-13 |
+| `/conversations`, `/conversations/:id` | `ConversationPage` | Conversation Participant | UC3 · FR-19–FR-21, NFR-04 |
+| `/admin/reports` | `AdminReportsPage` | Administrator (`ROLE_ADMIN`) | UC4 · FR-26–FR-28 |
+
+**React page and component props interfaces** (`frontend/src/pages/`, `frontend/src/components/`):
+
+| Component | Props signature | Contract & UI rules |
+|---|---|---|
+| `LoginPage` | `{ onLoginSuccess?: (account: AccountDto) => void }` | Submits `LoginRequest`; displays 401/403/423 `detail` alerts including 15-minute lockout and suspension messages (FR-05, FR-28). |
+| `RegisterPage` | `{ onRegistered?: (res: MessageResponse) => void }` | Enforces client-side password pattern (`8–72` chars, ≥ 1 uppercase, ≥ 1 digit) and handles `?token=` verification via `verifyEmail(token)` (FR-01–FR-04). |
+| `FeedPage` | `{ initialPosts?: PostCardDto[] }` | Manages keyword, category, subtype, status (`ACTIVE`/`RESOLVED`), UTC date range and 20-item pagination; renders `"No posts found"` when empty (FR-14–FR-16). |
+| `PostDetailPage` | `{ post?: PostDetailDto, isAuthor?: boolean }` | Shows alias-only metadata, author `Edit`/`Mark as Resolved`/`Delete` controls, `ReportDialog` trigger, and disables first-message form when `status === 'RESOLVED'` (FR-11, FR-12, FR-17, FR-19). |
+| `PostFormPage` | `{ initialValues?: PostDetailDto \| null, onSaved?: (post: PostDetailDto) => void }` | Restricts subtypes to the selected category (`LOST_FOUND` vs. `STUDENT_COOPERATION`) and rejects non-JPEG/PNG or `> 5 MB` files before upload (FR-09, FR-10). |
+| `ConversationPage` | `{ conversations?: ConversationSummaryDto[], initialMessages?: MessageDto[] }` | Displays unread badges and 1–1,000 character message thread showing only `counterpartAlias` / `senderAlias`, never e-mails (FR-19–FR-21, NFR-04). |
+| `AdminReportsPage` | `{ initialQueue?: ReportedPostDto[] }` | Sorts `alert = true` (`HIDDEN`, `> 3` unique reports) entries first; exposes `RESTORE`, `REMOVE`, and `Suspend`/`Unsuspend` actions (FR-26–FR-28). |
+| `PostCard` | `{ post: PostCardDto, onReportClick?: (postId: number) => void }` | Renders escaped plain-text title/snippet, category/subtype/Resolved badges and `authorAlias` (FR-13, FR-14, NFR-04). |
+| `ReportDialog` | `{ postId: number \| null, isOpen: boolean, onClose: () => void, onSubmit?: (postId: number, req: CreateReportRequest) => void }` | Accessible modal (`role="dialog"`, `aria-modal="true"`) with `FRAUD`, `SPAM`, `OFFENSIVE_CONTENT`, `OTHER` select and ≤ 500-char comment (FR-25). |
+
+**Frontend API client signatures** (`frontend/src/api/unihelpApi.js`, matching §§2.3.1–2.3.4):
+
+```javascript
+// UC1 — Authentication & Verification (§2.3.1)
+register(registerRequest)                        // POST /api/auth/register
+verifyEmail(token)                               // GET  /api/auth/verify?token=...
+login(loginRequest)                              // POST /api/auth/login
+logout()                                         // POST /api/auth/logout
+
+// UC2 & UC3 — Posts, Feed & Search (§2.3.2)
+searchPosts({ keyword, category, subtype, status, from, to, page }) // GET /api/posts
+getPostDetail(postId)                            // GET    /api/posts/{id}
+createPost(postWriteRequest, imageFile)          // POST   /api/posts (multipart: post + image)
+updatePost(postId, postWriteRequest, imageFile)  // PUT    /api/posts/{id} (multipart)
+deletePost(postId)                               // DELETE /api/posts/{id}
+resolvePost(postId)                              // PATCH  /api/posts/{id}/resolve
+
+// UC3 — Anonymous Messaging (§2.3.3)
+startConversation(postId, startConversationRequest) // POST /api/posts/{id}/conversations
+listConversations()                                 // GET  /api/conversations
+sendMessage(conversationId, sendMessageRequest)     // POST /api/conversations/{id}/messages
+
+// UC4 — Reporting & Admin Moderation (§2.3.4)
+submitReport(postId, createReportRequest)        // POST  /api/posts/{id}/reports
+listReportedPosts(page)                          // GET   /api/admin/reports?page=...
+moderatePost(postId, action)                     // PATCH /api/admin/posts/{id}
+setUserSuspension(userId, suspended)             // PATCH /api/admin/users/{id}/suspension
+```
+
+All React views render user-supplied strings via JSX text nodes (`{post.title}`, `{msg.content}`) without `dangerouslySetInnerHTML`, complementing server-side sanitization (FR-13, NFR-03).
+
 ### 2.4 Visual Interfaces
 
-<!-- TODO: Taha — wireframes are stored in docs/design/wireframes/ -->
+Low-fidelity vector wireframes for all four use cases are committed under `docs/design/wireframes/`. Every wireframe pairs a **Desktop (`1280 px+`)** layout with a single-column **Mobile (`360 px`)** viewport adaptation to satisfy NFR-07 (`360 px – 1920 px` responsiveness and WCAG 2.1 Level AA labelled controls) while exposing only generated display aliases (`BlueOwl482`, `GreenFox107`) on shared screens (FR-04, FR-20, NFR-04).
 
----
+#### 2.4.1 Register, E-mail Verification & Login Views (UC1 — FR-01–FR-05, NFR-07)
+
+![UC1 Register, Verify and Login Wireframes](wireframes/01-auth-pages.svg)
+
+Covers `/register`, `/verify?token=...` and `/login`. Registration highlights the university domain policy (`@etu.edu.tr`), password rules (`8–72` characters, uppercase + digit) and automatic alias assignment; login surfaces inline `role="alert"` banners for domain rejection (`400`), unverified/suspended accounts (`403`) and the 15-minute lockout after 5 failed attempts (`423`).
+
+#### 2.4.2 Post Creation & Editing View (UC2 — FR-09–FR-11, FR-13, NFR-07)
+
+![UC2 Post Creation Form Wireframes](wireframes/02-post-form.svg)
+
+Covers post creation and editing. Category and sub-type selectors restrict options to valid pairs (`LOST_FOUND` → `LOST`/`FOUND`; `STUDENT_COOPERATION` → `BOOK`/`ROOMMATE`/`OTHER`); title enforces `5–100` characters, description allows up to `2,000` characters with server-side HTML/script sanitization (FR-13), and the file input restricts attachments to JPEG or PNG files under `5 MB` (FR-10).
+
+#### 2.4.3 Feed Search, Filtering & Post Detail Views (UC2, UC3 — FR-12, FR-14–FR-17, NFR-07)
+
+![UC3 Feed and Post Detail Wireframes](wireframes/03-feed-and-detail.svg)
+
+Covers the main feed and post detail page. The feed offers keyword substring search (FR-15), category/subtype/status filters, UTC date range selectors and 20-item pagination (FR-14, FR-16), rendering an accessible `"No posts found"` state when empty (FR-15, QA Plan TC-06). The post detail page displays the author alias only, optional image, and author controls (`Edit`, `Mark as Resolved`, `Delete`) or the anonymous `Send message` trigger, which is disabled when `status === 'RESOLVED'` (FR-12, FR-17).
+
+#### 2.4.4 Anonymous Conversations Inbox & Thread Views (UC3 — FR-19–FR-21, NFR-02, NFR-04, NFR-07)
+
+![UC3 Conversations Wireframes](wireframes/04-conversation.svg)
+
+Covers `/conversations` inbox and active threads. The sidebar lists ongoing conversations with unread badges, ordered by newest activity first (FR-21). The message thread displays AES-256-GCM encrypted messages (NFR-02) mapped to `senderAlias` / `counterpartAlias`, ensuring real e-mails and account ids never appear in the UI or API payloads (FR-20, NFR-04).
+
+#### 2.4.5 Report Post Modal Dialog (UC4 — FR-25, NFR-07)
+
+![UC4 Report Dialog Wireframes](wireframes/05-report-dialog.svg)
+
+Covers the accessible modal dialog (`role="dialog"`, `aria-modal="true"`) for flagging posts with reasons (`FRAUD`, `SPAM`, `OFFENSIVE_CONTENT`, `OTHER`) and optional comments (FR-25). Duplicate reports submitted by the same student are intercepted by client and server checks, returning `409` with `"You have already reported this post."` without revealing report counts.
+
+#### 2.4.6 Administrator Moderation & Suspension Panel (UC4 — FR-26–FR-28, NFR-04, NFR-07)
+
+![UC4 Admin Panel Wireframes](wireframes/06-admin-reports.svg)
+
+Covers `/admin/reports`. The moderation queue displays reported and auto-hidden posts (`status = HIDDEN` when unique unreviewed reports exceed 3 under FR-26) sorted with active `alert = true` rows at the top. Administrators can expand report entries (display alias only, NFR-04), `RESTORE` or `REMOVE` posts (FR-27), and `Suspend` or `Unsuspend` abusive author accounts, which immediately terminates active sessions (FR-28).
 
 ## 3. Use Case Support
 
 ### 3.1 Use Case Selection & Requirement Mapping
 
-<!-- TODO: Taha -->
+To satisfy Project Assignment 2 requirements, UniHelp implements the complete core feature set across four foundational Use Cases (UC1–UC4). All selected use cases are assigned **Must have** priority and cover the 8 key features outlined in PA-1 Project Definition §6, aligning directly with Sprints 1–3 in the Project Plan.
+
+| Use Case ID | Primary Actor | Description & Scope | Associated Functional Requirements | Non-Functional Requirements | Priority & Sprint |
+|---|---|---|---|---|---|
+| **UC1** | Guest (becomes Student) | University e-mail registration, allow-list verification, BCrypt password hashing, verification link expiry, unique alias generation, secure sessions and lockout. | FR-01, FR-02, FR-03, FR-04, FR-05, FR-07, FR-08 | NFR-01, NFR-02, NFR-03, NFR-04 | Must · Sprint 1 |
+| **UC2** | Student (Author) | Post creation and editing with category/subtype validation, title/description constraints, optional single image upload, author ownership enforcement, text sanitization, and Resolved status. | FR-09, FR-10, FR-11, FR-12, FR-13, FR-18 | NFR-03, NFR-04, NFR-07 | Must · Sprint 1 |
+| **UC3** | Student (Initiator / Searcher) | Feed browsing, keyword substring search, combined category/date/status filters, empty state feedback, post detail inspection, anonymous messaging creation, and encrypted message thread exchange. | FR-14, FR-15, FR-16, FR-17, FR-19, FR-20, FR-21, FR-24 | NFR-01, NFR-02, NFR-04, NFR-05, NFR-07 | Must · Sprint 2 |
+| **UC4** | Student (Reporter) / Administrator | Community reporting with duplicate prevention, automatic post hiding upon exceeding 3 unique unreviewed reports, admin moderation queue review, post restore/remove, and account suspension. | FR-25, FR-26, FR-27, FR-28, FR-29 | NFR-03, NFR-04, NFR-10 | Must · Sprint 3 |
+
+#### 3.1.1 Traceability and Coverage Rationale
+- **Traceability to PA-1:** Every functional requirement (FR-01 through FR-29) and non-functional requirement (NFR-01 through NFR-11) defined in the Requirements Document is mapped directly to either service-layer component tests, Spring Boot integration tests, or manual evaluation procedures in the Quality Assurance Plan (§3.1).
+- **Scope Alignment:** By constraining UniHelp to a single campus model (`@etu.edu.tr`), the application maintains strong domain boundaries, eliminates distributed transaction overhead, and achieves secure, reliable session and message encryption management within a single Spring Boot and PostgreSQL architecture.
 
 ### 3.2 UC1 Design — Register, verify & log in with university e-mail
 
