@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" role="img" aria-labelledby="title description">
+  <title id="title">Conversational assistant low-fidelity wireframe</title>
+  <desc id="description">A planned desktop chat interface showing compound-query routing, MCP tool badges, streamed response text, and reconnection states.</desc>
+  <style>
+    .bg { fill: #f4f6f9; }
+    .sidebar { fill: #17233d; }
+    .surface { fill: #ffffff; stroke: #aab3c2; stroke-width: 2; }
+    .primary { fill: #2855d9; }
+    .soft { fill: #e9eefc; stroke: #9aabe0; stroke-width: 1.5; }
+    .warning { fill: #fff3d6; stroke: #d89b24; stroke-width: 1.5; }
+    .error { fill: #fde8e8; stroke: #cc5b5b; stroke-width: 1.5; }
+    .success { fill: #e2f6e9; stroke: #50a46d; stroke-width: 1.5; }
+    .muted { fill: #e9edf3; }
+    .title { font: 700 24px Arial, sans-serif; fill: #17233d; }
+    .body { font: 16px Arial, sans-serif; fill: #33415c; }
+    .small { font: 14px Arial, sans-serif; fill: #59677f; }
+    .tiny { font: 12px Arial, sans-serif; fill: #59677f; }
+    .white { fill: #ffffff; }
+    .label { font: 700 13px Arial, sans-serif; letter-spacing: 0.8px; }
+    .line { stroke: #bac2cf; stroke-width: 2; }
+  </style>
+
+  <rect class="bg" width="1440" height="900"/>
+
+  <!-- Sidebar -->
+  <rect class="sidebar" width="292" height="900"/>
+  <text x="34" y="46" class="white" style="font:700 20px Arial,sans-serif">Campus Assistant</text>
+  <rect x="28" y="78" width="236" height="44" rx="10" fill="#2855d9"/>
+  <text x="90" y="106" class="white body">+ New question</text>
+  <text x="32" y="166" class="white small">SUGGESTED</text>
+  <rect x="28" y="184" width="236" height="58" rx="9" fill="#263659"/>
+  <text x="44" y="208" class="white small">What's for lunch today?</text>
+  <text x="44" y="229" class="white tiny">Direct cafeteria path</text>
+  <rect x="28" y="252" width="236" height="58" rx="9" fill="#263659"/>
+  <text x="44" y="276" class="white small">Next metro shuttle</text>
+  <text x="44" y="297" class="white tiny">Direct shuttle path</text>
+  <rect x="28" y="320" width="236" height="72" rx="9" fill="#263659"/>
+  <text x="44" y="344" class="white small">After class: ring + menu</text>
+  <text x="44" y="365" class="white tiny">Agent multi-tool path</text>
+  <text x="32" y="444" class="white small">RECENT</text>
+  <text x="44" y="478" class="white small">Library availability</text>
+  <text x="44" y="512" class="white small">Monday schedule</text>
+  <line x1="28" y1="790" x2="264" y2="790" stroke="#53617e" stroke-width="1"/>
+  <circle cx="52" cy="836" r="17" fill="#92a5cc"/>
+  <text x="80" y="831" class="white small">Student session</text>
+  <text x="80" y="853" class="white tiny">Sign out</text>
+
+  <!-- Header -->
+  <rect x="292" width="1148" height="78" fill="#ffffff" stroke="#d0d6e0" stroke-width="1"/>
+  <text x="330" y="34" class="title">Conversational Assistant</text>
+  <text x="330" y="58" class="small">Routing mode and tool activity remain visible</text>
+  <rect x="1102" y="20" width="124" height="38" rx="19" class="soft"/>
+  <text x="1125" y="44" class="tiny">LLM_AGENT</text>
+  <rect x="1240" y="20" width="164" height="38" rx="19" class="success"/>
+  <text x="1265" y="44" class="tiny">Authenticated</text>
+
+  <rect x="326" y="101" width="1078" height="46" rx="8" class="soft"/>
+  <text x="346" y="130" class="label" fill="#2855d9">LOW-FIDELITY WIREFRAME — PLANNED UI, NOT AN IMPLEMENTED SCREENSHOT</text>
+
+  <!-- Conversation -->
+  <rect x="704" y="176" width="680" height="74" rx="16" fill="#2855d9"/>
+  <text x="730" y="207" class="white body">Can I catch the ring after my 10:30 class,</text>
+  <text x="730" y="231" class="white body">and what is for lunch today?</text>
+
+  <text x="330" y="289" class="small">Tool activity</text>
+  <rect x="330" y="306" width="252" height="40" rx="20" class="success"/>
+  <text x="351" y="331" class="tiny">get_course_schedule  •  LIVE  42 ms</text>
+  <rect x="592" y="306" width="252" height="40" rx="20" class="success"/>
+  <text x="613" y="331" class="tiny">get_shuttle_schedule  •  CACHE  12 ms</text>
+  <rect x="854" y="306" width="250" height="40" rx="20" class="warning"/>
+  <text x="875" y="331" class="tiny">get_cafeteria_menu  •  STALE  18 ms</text>
+
+  <rect x="330" y="372" width="880" height="214" rx="16" class="surface"/>
+  <circle cx="364" cy="408" r="17" fill="#2855d9"/>
+  <text x="391" y="413" class="card-title" style="font:700 18px Arial,sans-serif;fill:#17233d">Campus Assistant</text>
+  <text x="356" y="453" class="body">Your class ends at 12:20. The next Main Ring leaves at 12:35,</text>
+  <text x="356" y="483" class="body">so you have a 15-minute transfer window.</text>
+  <text x="356" y="529" class="body">Today's lunch menu is shown below from cached data.</text>
+  <rect x="356" y="548" width="620" height="24" rx="6" class="muted"/>
+  <rect x="987" y="548" width="14" height="24" rx="4" class="primary"/>
+  <text x="1020" y="566" class="tiny">streaming…</text>
+
+  <!-- Recovery and stale state examples -->
+  <rect x="1230" y="372" width="174" height="102" rx="12" class="warning"/>
+  <text x="1247" y="399" class="label" fill="#8a5b00">STALE NOTICE</text>
+  <text x="1247" y="425" class="tiny">Menu cached at 10:15.</text>
+  <text x="1247" y="447" class="tiny">Dining unavailable.</text>
+  <rect x="1230" y="484" width="174" height="102" rx="12" class="error"/>
+  <text x="1247" y="511" class="label" fill="#9b3333">SSE RECOVERY</text>
+  <text x="1247" y="537" class="tiny">Reconnecting 2/3…</text>
+  <text x="1247" y="559" class="tiny">Draft remains intact.</text>
+
+  <!-- Suggestion chips -->
+  <text x="330" y="630" class="small">Follow-up suggestions</text>
+  <rect x="330" y="646" width="214" height="38" rx="19" class="soft"/>
+  <text x="354" y="670" class="tiny">Show walking buffer</text>
+  <rect x="554" y="646" width="214" height="38" rx="19" class="soft"/>
+  <text x="580" y="670" class="tiny">Open today's menu</text>
+  <rect x="778" y="646" width="214" height="38" rx="19" class="soft"/>
+  <text x="805" y="670" class="tiny">Check library space</text>
+
+  <!-- Composer -->
+  <rect x="326" y="722" width="1078" height="126" rx="16" class="surface"/>
+  <text x="354" y="757" class="small">Ask about classes, meals, shuttles, or library availability…</text>
+  <line x1="354" y1="779" x2="1370" y2="779" class="line"/>
+  <text x="354" y="819" class="tiny">Typed input is preserved during timeout or reconnection.</text>
+  <rect x="1276" y="792" width="96" height="42" rx="21" class="primary"/>
+  <text x="1307" y="818" class="white body">Send</text>
+
+  <text x="330" y="878" class="tiny">Desktop concept • Mobile: sidebar collapses, badges wrap, composer remains fixed within the viewport</text>
+</svg>
