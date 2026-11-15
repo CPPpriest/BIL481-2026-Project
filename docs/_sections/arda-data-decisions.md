@@ -67,8 +67,8 @@ BIL481-2026-Project/
 │   ├── mcp-server/            # MCP server: tool registry, ToolDispatcher, transports,        (Murat, in dev)
 │   │                          # agent skeleton, temporary sample handlers
 │   ├── web/                   # bilingual intent router (+ Next.js UI planned)                (Yunus, in dev)
-│   └── api-gateway/           # Fastify gateway: JWT verification, token termination,        (Sefa, on branch
-│                              # rate limiting                                                  feat/gateway-auth-skeleton)
+│   └── api-gateway/           # Fastify gateway: JWT verification, token termination,        (Sefa, in dev)
+│                              # rate limiting
 ├── tests/
 │   ├── mcp-server/            # dispatcher and registry tests                                 (Murat, in dev)
 │   └── connectors/            # connector, cache, circuit breaker, integration tests          (Arda, on branch
@@ -76,20 +76,17 @@ BIL481-2026-Project/
 ├── comparisons/
 │   ├── Redis-vs-memory/       # Design Decision 4.1 code                                      (Arda, on branch
 │   │                          #                                                                feat/connectors)
-│   └── Fastify-vs-Express/    # Design Decision 4.2 code                                      (Sefa, on branch
-│                              #                                                                feat/gateway-auth-skeleton)
+│   └── Fastify-vs-Express/    # Design Decision 4.2 code                                      (Sefa, in dev)
 └── docs/
     ├── Concept Notes.pdf      # Assignment 0                                                  (in dev)
     ├── Project_Definition_Document.md, Requirements_Document.md,
     │   Project_Plan_Document.md, PA-1-01-11-2026/ (PDFs)                                      (Assignment 1, in dev)
     ├── Design_Document.md     # merged Design Document                                        (Murat, planned)
-    ├── QA_Plan.md             # QA Plan                                                       (Sefa, on branch
-    │                          #                                                                docs/sefa-qa-plan)
-    ├── _sections/             # per-member handoffs: murat-design.md (in dev);
-    │                          # yunus-usecases-ui.md, sefa-gateway-interface.md (on branches);
+    ├── QA_Plan.md             # QA Plan                                                       (Sefa, in dev)
+    ├── _sections/             # per-member handoffs: murat-design.md, yunus-usecases-ui.md,
+    │                          # sefa-gateway-interface.md (in dev);
     │                          # arda-data-decisions.md (on branch docs/arda-data-decisions)
-    └── wireframes/            # dashboard and assistant wireframes                            (Yunus, on branch
-                               #                                                                docs/yunus-usecases-ui)
+    └── wireframes/            # dashboard and assistant wireframes                            (Yunus, in dev)
 ```
 
 **Ownership rule:** each member commits mainly inside their own folders, following the requirement owners in Project Plan §11.1; all members use traceable GitHub commits and peer-reviewed pull requests (Project Plan §11.3), so contributions are visible per member in the Git history. Shared contracts change only in `packages/shared` and are owned by Murat. Other packages import them and do not redefine them.
@@ -348,7 +345,7 @@ All tests below were **executed** on 15 November 2026 with `npx vitest run` (Vit
 | `resilientExecutor.test.ts` | 12 | Cache hit without upstream call, TTL expiry, 3 × TTL retention, stale with original timestamp, structured error without cache, 800 ms timeout (fake timers), cache outage tolerance, zero upstream calls while open, isolation of library/shuttle, caller errors bypass circuit | TC-06, FR-09, FR-10, FR-11, NFR-03 (functional) |
 | `dispatcherIntegration.test.ts` | 13 | Handlers inside Murat's real `ToolDispatcher`: UC-01/02/03/04 calls, cache hit, `isSimulated: true` on all mock answers, passed departures removed from cached shuttle data, `-32602` paths, guest refused, `studentId` argument rejected, stale envelope, live-mode degradation | UC-01 – UC-04, TC-04, TC-06 |
 | `redisVsMemory.demo.test.ts` | 2 | Decision 4.1 demonstration (upstream call counts, fallback after restart) | Decision 4.1 |
-| **Total** | **76** | **All passed**; the full repository suite: 139 / 139 passed | |
+| **Total** | **76** | **All passed**. With `feat/connectors` merged onto the current `dev` (which includes the API gateway), the full repository suite also passes: 146 / 146 | |
 
 - **Line coverage of `packages/connectors/src`:** 98.1 % (414 / 422 lines), measured on 15 Nov 2026 with `@vitest/coverage-v8` 5.1.0, which was installed temporarily and is not added to the repository dependencies. The NFR-08 target is ≥ 70 %. Statement coverage is 98.16 %, branch 87.56 %, function 97.5 %.
 - **Type check:** `tsc --noEmit` passes for `packages/connectors` and for the test files.
@@ -672,7 +669,7 @@ The shared store in the test is a fake Redis client, so this shows semantics, no
 
 > **Consistency note for Sefa (QA):**
 > - `comparisons/Fastify-vs-Express/README.md` gives "≈ 65 000 – 75 000 vs ≈ 25 000 – 30 000 req/sec" without a source. This section uses the cited figures above instead. Please align the README or add its source.
-> - The wording "compiled C-level schemas" should read "compiled JavaScript validation functions (Ajv)". Ajv generates JavaScript code; it does not generate C code.
+> - In `docs/_sections/sefa-gateway-interface.md`, the wording "compiled C-level schemas" should read "compiled JavaScript validation functions (Ajv)". Ajv generates JavaScript code; it does not generate C code.
 
 ---
 
@@ -692,7 +689,7 @@ The shared store in the test is a fake Redis client, so this shows semantics, no
   3. in `server.ts`, replace `registerSampleMockHandlers(dispatcher)` with `registerConnectorHandlers(dispatcher, createConnectorRuntime())`.
 
   `tests/connectors/dispatcherIntegration.test.ts` already proves that this works with the current `ToolDispatcher`; no dispatcher change is needed.
-- **H-3 — Build order (observed on `dev`, 15 Nov 2026):**
+- **H-3 — Build order (observed on `dev`, 15 Nov 2026, also after the gateway merge):**
   - On a fresh clone, `npm run build` fails with `TS2307: Cannot find module '@campus-orchestrator/shared'`. npm builds `apps/*` before `packages/*`, so `packages/shared/dist` does not exist yet. `packages/connectors` would hit the same problem, because it sorts before `shared`.
   - Suggested fix in the root `package.json`: `"build": "npm run build -w @campus-orchestrator/shared && npm run build --workspaces --if-present"`. TypeScript project references would also work.
   - This change was not made because the root file is shared.
