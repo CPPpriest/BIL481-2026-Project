@@ -76,54 +76,73 @@ In compliance with the BIL 481 Project Assignment 2 specification, each team mem
 
 **Campus Data Orchestrator** is an open-standard integration platform built on the **Model Context Protocol (MCP)** over JSON-RPC 2.0. In modern universities, everyday student operations are digitally fragmented across isolated silos: cafeteria menus reside on external catering web portals, course schedules are locked inside proprietary Student Information Systems (SIS), campus shuttle ("ring") schedules are hosted on transit trackers, and study space availability is recorded on disconnected turnstile IoT hardware feeds. Answering simple everyday inquiries (such as *"What is for lunch today, and can I catch a ring after my 10:30 class?"*) forces students to switch between multiple portals and manually synthesize contradictory information.
 
-The Campus Data Orchestrator solves this fragmentation by placing a stateless, high-throughput MCP middleware server between campus data feeds and end users. It exposes four core campus services as strictly validated MCP tools, providing two complementary consumption pathways: a **Campus at a Glance Dashboard** that serves frequently requested telemetry (menus, shuttles, library occupancy) instantly from cache without invoking an AI model, and an **Autonomous Conversational Assistant** powered by a Large Language Model (Google Gemini) that plans multi-tool reasoning sequences and synthesizes unified responses. The system enforces strict perimeter identity isolation to prevent student credentials from leaking to external LLM providers and maintains fault isolation through Redis caching, circuit breaking, and synthetic mock fallback.
+The Campus Data Orchestrator solves this fragmentation by placing a stateless, high-throughput MCP middleware server between campus data feeds and end users. It exposes four core campus services as strictly validated MCP tools, providing two complementary consumption pathways: a **Campus at a Glance Dashboard** that serves frequently requested telemetry (menus, shuttles, library occupancy) instantly from cache without invoking an AI model, and an **Autonomous Conversational Assistant** powered by a Large Language Model (Google Gemini) that plans multi-tool reasoning sequences and synthesizes unified responses. The system enforces strict perimeter identity isolation to prevent student credentials from leaking to external LLM providers and maintains fault isolation through multi-tiered caching (in-memory in Phase 2; Redis in Phase 3), circuit breaking, and synthetic mock fallback.
 
 ### 1.2 System Architecture
 
 The system is organized into a **5-tier decoupled architecture**, separating presentation, security perimeter enforcement, agentic reasoning, protocol dispatching, and upstream campus connectors:
 
-1. **Presentation Tier (Next.js 14):** Hosts the dual-view web application (Fast-Access Dashboard and Streaming Conversational Assistant) paired with a client-side **Bilingual Deterministic Intent Router (FR-16)** that classifies incoming natural language queries into either direct widget or agent paths.
-2. **API Gateway & Security Tier (Fastify):** Enforces zero-trust perimeter security, verifies JWTs issued by a local mock SSO authority, strips raw credentials to ensure 100% token isolation, enforces per-identity tiered rate limiting (FR-07, FR-08), and injects verified internal identity headers (`X-Authenticated-Student-Id`, `X-Authenticated-User-Role`).
+1. **Presentation Tier:** Hosts the dual-view web experience (Fast-Access Dashboard and Streaming Conversational Assistant) paired with a client-side **Bilingual Deterministic Intent Router (FR-16)** that classifies incoming natural language queries into either direct widget or agent paths.
+2. **API Gateway & Security Tier (Fastify):** Enforces zero-trust perimeter security, verifies JWTs issued by a local mock SSO authority, strips raw credentials to ensure 100% token isolation, enforces per-identity sliding-window rate limiting (FR-07, FR-08), and injects verified internal identity headers (`X-Authenticated-Student-Id`, `X-Authenticated-User-Role`).
 3. **AI Agent & MCP Client Tier:** Orchestrates multi-step reasoning plans using Google Gemini (behind a Provider Adapter), applies an in-memory regex pipeline to scrub student Personally Identifiable Information (PII) before external prompt dispatch (FR-14), and invokes MCP tools via standardized JSON-RPC envelopes (FR-13).
-4. **MCP Server Core Middleware (Node.js & TypeScript):** The central stateless coordination engine developed by Murat. It implements the Model Context Protocol specification over Streamable HTTP and stdio transports (FR-01, FR-02), registers four strictly validated tools, executes input validation via Zod schemas, enforces perimeter authorization context, and coordinates Redis caching (FR-09), stale-if-error fallback (FR-10), and circuit breaking (FR-11).
+4. **MCP Server Core Middleware (Node.js & TypeScript):** The central stateless coordination engine developed by Murat. It implements the Model Context Protocol specification over stdio, legacy HTTP+SSE (`SSEServerTransport`), and direct JSON-RPC HTTP transports (with true Streamable HTTP transport planned for Phase 3) (FR-01, FR-02), registers four strictly validated tools, executes input validation via Zod schemas, enforces perimeter authorization context, and coordinates multi-tiered caching (FR-09), stale-if-error fallback (FR-10), and circuit breaking (FR-11).
 5. **Connector Integration Tier (`ICampusConnector`):** Implements pluggable data adapters developed by Arda. Each connector implements a unified interface supporting both live scraping/APIs and deterministic synthetic mock fixtures (FR-12) for air-gapped automated testing.
+
+#### Implementation Maturity Separation
+
+To ensure absolute engineering transparency, the system architecture distinguishes clearly between components operational in the current Phase 2 milestone and components planned for Phase 3 integration:
+
+- **Implemented in Phase 2 (Active Repository Codebase):**
+  - **Language & Runtime:** Node.js (v24 / v20), TypeScript (v5.4.5 strict mode), and npm workspaces monorepo structure.
+  - **Bilingual Deterministic Intent Router (`apps/web`):** Pure TypeScript regex-based intent classification engine (`routeStudentQuery.ts`) supporting Turkish and English query analysis with zero external runtime dependencies (FR-16).
+  - **API Gateway Skeleton (`apps/api-gateway`):** Fastify 4.28 server skeleton, custom mock-SSO JWT verification, token termination/stripping, trusted header injection, and in-memory sliding-window rate limiting store (`InMemoryRateLimiterStore`) (FR-07, FR-08).
+  - **MCP Server Core (`apps/mcp-server`):** `@modelcontextprotocol/sdk` (v1.32.2) protocol implementation, Zod 3.23.8 strict schema validation, `ToolDispatcher` pipeline with auth guarding, `StdioServerTransport`, `SSEServerTransport` (legacy HTTP+SSE), custom JSON-RPC 2.0 `POST /mcp` endpoint, `/health` heartbeat, and deterministic sample mock flows (FR-01, FR-02, FR-03–06).
+  - **Campus Connectors & Resilience (`packages/connectors`):** Pluggable `ICampusConnector` contracts, deterministic seeded synthetic mock data generators (Mulberry32 PRNG), `InMemoryCacheStore`, 3-state circuit breaker state machine, and stale-if-error fallback executor (FR-03–06, FR-09–12).
+  - **Test Infrastructure:** Vitest 5.1.0 test runner executing 146 offline unit and integration tests across 10 test files with zero external service dependencies (NFR-08).
+
+- **Planned for Phase 3 (Core Development Roadmap):**
+  - **Presentation UI:** Next.js 14 App Router, React 18, and Tailwind CSS responsive interface with live SSE streaming client (FR-15, FR-17, FR-18).
+  - **AI Agent Integration:** Google Gemini API/SDK client integration (`@google/genai` or `@google/generative-ai`), live multi-tool function calling, and automated prompt PII scrubber (FR-13, FR-14; Phase 2 provides `IAgentOrchestrator` skeleton).
+  - **Centralized Infrastructure & Caching:** Live Redis 7.2 containerized service (replacing in-memory stores for multi-instance cache and atomic sliding-window rate limiting) via Docker Compose (FR-08–11).
+  - **Production Gateway Plugins:** Ecosystem plugins (`@fastify/jwt`, `@fastify/rate-limit`, `@fastify/http-proxy`) and official MCP Streamable HTTP transport integration.
+  - **Persistence & Telemetry:** PostgreSQL 16 database and Prisma ORM for cryptographically hashed student audit records, tool execution latency telemetry, and error logging (FR-20).
 
 #### Dual Data Flow Pathways
 
 The architecture supports two distinct execution paths based on query complexity:
 
-- **Path A: Direct Fast-Path (`DIRECT_WIDGET`):** Simple, single-domain queries (e.g., *"yemekte ne var"*, *"next ring to metro"*, *"library floor 2 occupancy"*) contain no conjunctions or inter-service dependencies. The client-side intent router identifies the target service and bypasses the AI Agent tier entirely, dispatching a direct query to the MCP tool endpoint through the gateway. Responses resolve in `< 25 ms` from Redis cache, consuming zero LLM tokens.
+- **Path A: Direct Fast-Path (`DIRECT_WIDGET`):** Simple, single-domain queries (e.g., *"yemekte ne var"*, *"next ring to metro"*, *"library floor 2 occupancy"*) contain no conjunctions or inter-service dependencies. The client-side intent router identifies the target service and bypasses the AI Agent tier entirely, dispatching a direct query to the MCP tool endpoint through the gateway. Responses resolve directly from cache, consuming zero LLM tokens and comfortably satisfying the overall P95 < 250 ms (target) response time requirement (NFR-01).
 - **Path B: Agentic Orchestration Path (`LLM_AGENT`):** Compound, multi-service, or ambiguous inquiries (e.g., *"Can I eat lunch and catch the ring after my morning lecture?"*) are routed to the AI Agent. The agent extracts temporal constraints, plans multiple tool invocations (`get_course_schedule` → `get_cafeteria_menu` → `get_shuttle_schedule`), invokes the MCP Server via `tools/call`, and synthesizes a unified Markdown response with live execution telemetry badges.
 
 ```mermaid
 flowchart TD
-    subgraph Tier1["1. Presentation Tier (Next.js 14 + Tailwind CSS)"]
-        ClientUI["Web Client Dual View (Dashboard & Chat)"]
+    subgraph Tier1["1. Presentation Tier (Phase 2: Intent Router | Phase 3: Next.js 14 UI)"]
+        ClientUI["Web Client Dual View (Wireframe Planned Phase 3)"]
         Router{"Bilingual Deterministic Intent Router (FR-16)"}
         ClientUI -->|"User Query"| Router
     end
 
     subgraph Tier2["2. API Gateway & Security Perimeter (Fastify)"]
-        Gateway["Fastify API Gateway"]
+        Gateway["Fastify API Gateway Skeleton"]
         AuthBoundary["JWT Token Termination & Header Injection (FR-07)"]
-        RateLimiter["Redis Atomic Rate Limiter (FR-08)"]
+        RateLimiter["Sliding-Window Rate Limiter (Phase 2: In-Memory | Phase 3: Redis)"]
         Gateway --> AuthBoundary
         AuthBoundary --> RateLimiter
     end
 
-    subgraph Tier3["3. AI Agent & Orchestration Tier"]
-        Agent["Gemini Agent Orchestrator (FR-13)"]
-        PIIFilter["Zero-Leakage PII Scrubber (FR-14)"]
-        GeminiAPI["Google Gemini LLM API (External Provider)"]
+    subgraph Tier3["3. AI Agent & Orchestration Tier (Phase 3 Integration)"]
+        Agent["Agent Orchestrator Skeleton (FR-13; Planned: Gemini SDK)"]
+        PIIFilter["Zero-Leakage PII Scrubber (FR-14, Planned)"]
+        GeminiAPI["Google Gemini LLM API (External Provider, Planned)"]
         Agent --> PIIFilter
         PIIFilter --> GeminiAPI
     end
 
-    subgraph Tier4["4. MCP Server Core Middleware (Node.js 24)"]
-        MCPServer["Model Context Protocol Server (FR-01, FR-02)"]
+    subgraph Tier4["4. MCP Server Core Middleware (Node.js & TypeScript)"]
+        MCPServer["MCP Server (FR-01, FR-02: Stdio + Legacy SSE)"]
         ToolRegistry["Tool Definitions Registry (Strict Schemas)"]
         Dispatcher["ToolDispatcher Engine & Auth Guard"]
-        CacheStore["Redis Multi-Tiered Cache (FR-09, FR-10)"]
+        CacheStore["Multi-Tiered Cache (Phase 2: InMemory | Phase 3: Redis)"]
         CircuitBreaker["Isolated Circuit Breakers (FR-11)"]
 
         MCPServer --> ToolRegistry
@@ -133,10 +152,10 @@ flowchart TD
     end
 
     subgraph Tier5["5. Connector Integration Tier (Arda)"]
-        DiningConn["Cafeteria Connector (FR-03)"]
-        ShuttleConn["Shuttle Transit Connector (FR-04)"]
-        LibraryConn["Library Occupancy Connector (FR-05)"]
-        SISConn["SIS Timetable Connector (FR-06)"]
+        DiningConn["Cafeteria Connector (FR-03: Seeded Mock)"]
+        ShuttleConn["Shuttle Transit Connector (FR-04: Seeded Mock)"]
+        LibraryConn["Library Occupancy Connector (FR-05: Seeded Mock)"]
+        SISConn["SIS Timetable Connector (FR-06: Seeded Mock)"]
 
         CircuitBreaker --> DiningConn
         CircuitBreaker --> ShuttleConn
@@ -154,18 +173,22 @@ flowchart TD
 
 ### 1.3 Technology Stack
 
-The complete system utilizes open-source, reproducible technologies designed for local execution within Docker Compose:
+The system distinguishes between technologies actively implemented and executed within the Phase 2 skeleton and external production services planned for Phase 3 containerization:
 
-| Architectural Tier | Technology / Library | Version / Baseline | Justification & Responsibility |
-| :--- | :--- | :--- | :--- |
-| **Presentation Tier** | Next.js, React, Tailwind CSS | Next.js 14, React 18 | Dual-view responsive interface, Server-Sent Events (SSE) streaming, deterministic regex router (FR-15–FR-19). |
-| **API Gateway Tier** | Fastify, `@fastify/jwt`, `@fastify/rate-limit` | Fastify 4.28.x | High-throughput perimeter gateway, OAuth2/JWT token stripping, Redis-backed rate limiting (FR-07, FR-08). |
-| **MCP Server Core** | Node.js, TypeScript, `@modelcontextprotocol/sdk` | Node.js v24, TS 5.4, MCP SDK 1.32 | Stateless JSON-RPC 2.0 protocol implementation, streamable HTTP and stdio transports, tool dispatching (FR-01, FR-02). |
-| **Schema Validation** | Zod | Zod 3.23.8 | Strict schema validation (`additionalProperties: false`, `.strict()`) for all incoming MCP tool payloads. |
-| **AI / LLM Integration** | Google Gemini API, Google Gen AI SDK | Gemini 1.5 Flash / 2.0 | Multi-tool autonomous planning, function calling, contextual synthesis, and provider abstraction (FR-13). |
-| **Caching & Resilience** | Redis | Redis 7.2 (Alpine) | Granular TTL storage (60s–3600s), stale-if-error fallback cache, distributed rate limiting counters (FR-09–FR-11). |
-| **Persistence & Telemetry** | PostgreSQL, Prisma ORM | PostgreSQL 16, Prisma 5.x | Cryptographically hashed student audit records, tool execution latency telemetry, and error logging (FR-20). |
-| **Testing & Quality** | Vitest, Supertest | Vitest 5.1.0 | Offline/mock unit and integration testing suite achieving `< 1s` execution for air-gapped CI/CD (NFR-08). |
+| Architectural Tier | Technology / Library | Version / Baseline | Status | Justification & Responsibility |
+| :--- | :--- | :--- | :--- | :--- |
+| **Language & Runtime** | Node.js, TypeScript | Node.js v24 / v20, TS 5.4.5 | **Implemented (Phase 2)** | Foundation execution environment, strict compiler rules (`strict: true`, `NodeNext`), npm workspaces monorepo. |
+| **MCP Server Core** | `@modelcontextprotocol/sdk` | SDK 1.32.2 | **Implemented (Phase 2)** | Stateless JSON-RPC 2.0 protocol implementation, Stdio and legacy HTTP+SSE (`SSEServerTransport`) transports, `/mcp` and `/health` endpoints (FR-01, FR-02). |
+| **Schema Validation** | Zod | Zod 3.23.8 | **Implemented (Phase 2)** | Runtime parameter validation enforcing strict JSON Schema schemas (`additionalProperties: false`, `.strict()`) across all MCP tools. |
+| **Intent Routing** | TypeScript RegExp Engine (`apps/web`) | TS 5.4.5 | **Implemented (Phase 2)** | Client-side bilingual (Turkish/English) deterministic intent classification (`routeStudentQuery`) with zero external runtime dependencies (FR-16). |
+| **API Gateway Core** | Fastify | Fastify 4.28.1 | **Implemented (Phase 2)** | High-throughput gateway skeleton, custom mock-SSO JWT verification, token stripping, header injection, and in-memory rate limiting (FR-07, FR-08). |
+| **Connector Resilience** | In-Memory Cache & Circuit Breaker | Native TypeScript | **Implemented (Phase 2)** | Seeded synthetic mock generators (Mulberry32 PRNG), `InMemoryCacheStore`, 3-state circuit breaker, and stale-if-error fallback executor (FR-03–06, FR-09–12). |
+| **Testing & Verification** | Vitest | Vitest 5.1.0 | **Implemented (Phase 2)** | Offline/mock unit and integration testing suite (146 tests, 10 files) executing in `< 1s` for air-gapped CI/CD compliance (NFR-08). |
+| **Presentation UI** | Next.js, React, Tailwind CSS | Next.js 14, React 18 | **Planned (Phase 3)** | Dual-view responsive web interface (Campus Dashboard & Conversational Assistant) and SSE streaming UI listener (FR-15, FR-17, FR-18). |
+| **AI / LLM Integration** | Google Gemini API, Google Gen AI SDK | Gemini 1.5 Flash / 2.0 | **Planned (Phase 3)** | Autonomous multi-tool reasoning, function calling, contextual synthesis, and prompt PII scrubber (FR-13, FR-14; Phase 2 provides `IAgentOrchestrator` skeleton). |
+| **Centralized Caching** | Redis | Redis 7.2 (Alpine) | **Planned (Phase 3)** | Shared multi-instance TTL cache (replacing `InMemoryCacheStore`) and distributed atomic sliding-window rate limiting (replacing `InMemoryRateLimiterStore`) (FR-08–11). |
+| **Gateway Production Plugins** | `@fastify/jwt`, `@fastify/rate-limit`, `@fastify/http-proxy` | Latest Fastify 4.x Plugins | **Planned (Phase 3)** | Ecosystem plugins for production JWT verification, reverse proxy routing to MCP server, and Redis cluster rate limiting. |
+| **Persistence & Telemetry** | PostgreSQL, Prisma ORM | PostgreSQL 16, Prisma 5.x | **Planned (Phase 3)** | Cryptographically hashed student audit records, tool execution latency telemetry, and error logging (FR-20). |
 
 ---
 
@@ -279,9 +302,9 @@ The core middleware server coordinates tool discovery, validation, dispatching, 
    - *Handler Lookup:* Returns a structured `NOT_IMPLEMENTED` error if no handler is attached.
    - *Execution:* Invokes the handler and wraps output in an `MCPToolResponse` envelope.
 3. **Dual Transport Layers (`src/server.ts`, `src/index.ts`):**
-   - *Streamable HTTP (SSE):* Exposes `GET /health` (liveness check), `GET /mcp` (SSE connection via `SSEServerTransport`), `POST /mcp/messages` (SSE session messaging), and direct `POST /mcp` (JSON-RPC 2.0 with `X-Authenticated-*` extraction).
-   - *Stdio Transport:* Exposes `StdioServerTransport` for CLI clients (Claude Desktop, MCP Inspector), isolating logs to `stderr`.
-4. **Temporary Sample Mock Handlers (`src/mocks/sampleMockHandlers.ts`):** Provides deterministic Phase 2 data fixtures for end-to-end verification. `sampleCafeteriaHandler` separates weekdays (nutritional menu) from weekends (`available: false`); `sampleLibraryHandler` flags responses with `isSimulated: true`.
+   - *HTTP Transport (Legacy HTTP+SSE & Custom JSON-RPC Endpoint):* In Phase 2, HTTP connectivity is implemented using `@modelcontextprotocol/sdk`'s `SSEServerTransport` (the legacy MCP HTTP-with-SSE protocol exposing `GET /mcp` for SSE stream initialization and `POST /mcp/messages` for incoming messages) alongside a custom JSON-RPC 2.0 `POST /mcp` endpoint for direct gateway invocations with `X-Authenticated-*` perimeter identity extraction, and `GET /health` for service heartbeat. The current codebase does not implement the newly standardized official MCP Streamable HTTP transport; integration of true MCP Streamable HTTP transport is planned for Phase 3.
+   - *Stdio Transport:* Implemented via `@modelcontextprotocol/sdk`'s `StdioServerTransport` for CLI-based clients (such as Claude Desktop or the MCP Inspector CLI), strictly routing diagnostic logs to `stderr` and reserving `stdout` exclusively for clean JSON-RPC messaging.
+4. **Temporary Sample Mock Handlers (`src/mocks/sampleMockHandlers.ts`):** Provides deterministic Phase 2 data fixtures for end-to-end verification. `sampleCafeteriaHandler` separates weekdays (nutritional menu) from weekends (`available: false`); `sampleLibraryHandler` flags responses with `isSimulated: true`. The source file explicitly documents that these are temporary mock fixtures to be superseded in Phase 3 by `packages/connectors` and Redis caching (FR-09, FR-10, FR-11).
 5. **AI Agent Orchestrator Skeleton (`src/agent/AgentOrchestrator.ts`):** Establishes the `IAgentOrchestrator` contract and plan structures (`AgentPlanStep`, `AgentTelemetryBadge`, `AgentSynthesisResult`). Its `executePlan` method honestly throws `NOT_IMPLEMENTED`, documenting the Phase 3 roadmap for Google Gemini API integration.
 
 ##### Implementation Status (Murat)
@@ -289,7 +312,7 @@ The core middleware server coordinates tool discovery, validation, dispatching, 
 | Subsystem | FR / NFR | Phase 2 Skeleton Status (**Implemented**) | Phase 3 Core Development Status (**Planned**) |
 | :--- | :--- | :--- | :--- |
 | **MCP Tool Registry** | FR-01 | **Implemented:** Strict JSON & Zod schemas with `additionalProperties: false`. | Schema discovery via live frontend widgets. |
-| **Transports (HTTP & Stdio)** | FR-02 | **Implemented:** SSE `/mcp`, `/health`, and Stdio working. | Production TLS termination on gateway proxy. |
+| **Transports (HTTP & Stdio)** | FR-02 | **Implemented:** `StdioServerTransport`, `SSEServerTransport` (legacy HTTP+SSE), custom `POST /mcp`, `/health` endpoint. | True MCP Streamable HTTP transport integration & TLS termination. |
 | **Tool Dispatcher** | FR-01, FR-06 | **Implemented:** Pipeline, `-32602` error handling, auth guard. | Connection to official `packages/connectors`. |
 | **Sample Mocks** | FR-03–06 | **Implemented:** Deterministic mock handlers in `apps/mcp-server`. | Replaced by Arda's connector package. |
 | **AI Agent Orchestrator** | FR-13 | **Implemented:** TypeScript interfaces, skeleton class. | Live Google Gemini API client integration. |
@@ -405,7 +428,7 @@ The API Gateway acts as the zero-trust perimeter security enforcement tier:
    - Deletes the raw `Authorization` header (`delete req.headers['authorization']`).
    - Strips any inbound `X-Authenticated-*` headers to defeat header spoofing attacks.
    - Injects verified internal headers: `X-Authenticated-Student-Id: <claims.sub>` and `X-Authenticated-User-Role: <claims.role>`.
-3. **Sliding-Window Rate Limiting Engine (FR-08):** Throttles requests using Redis atomic sliding-window transactions:
+3. **Sliding-Window Rate Limiting Engine (FR-08):** In the current Phase 2 implementation, rate limiting is executed via an in-memory sliding-window store (`InMemoryRateLimiterStore` in `apps/api-gateway/src/rate-limiter/slidingWindowRateLimiter.ts`). The store tracks millisecond-precision request timestamps per key within Node.js process memory, ensuring deterministic behavior for automated testing and air-gapped CI without external infrastructure dependencies. Transitioning to a distributed, Redis-based atomic sliding-window rate limiter (using Redis sorted sets and Lua scripts) is planned for Phase 3 containerization:
    - Partition keys: `rate:student:<studentId>` for authenticated users; `rate:ip:<clientIp>` for guests.
    - Sliding window: 60 seconds; ceiling: 30 requests per minute.
    - Rejections return HTTP `429 Too Many Requests` with a standard `Retry-After: <seconds>` header.
@@ -415,7 +438,7 @@ sequenceDiagram
     autonumber
     actor Client as Web Client / Student
     participant Gateway as Fastify API Gateway
-    participant Redis as Redis Rate Limiter
+    participant Limiter as Rate Limiter (InMemoryStore / Phase 3: Redis)
     participant MCP as MCP Middleware Server
     participant SIS as SIS Schedule Connector
 
@@ -425,7 +448,7 @@ sequenceDiagram
         Gateway-->>Client: 401 Unauthorized ({ "error": "Invalid or expired token" })
     else Valid Token (Student ID: 241101066)
         Gateway->>Gateway: 2. Strip raw Authorization & spoofed X-Authenticated-* headers
-        Gateway->>Redis: 3. Check rate counter (rate:student:241101066)
+        Gateway->>Limiter: 3. Check sliding-window rate limit (rate:student:241101066)
         alt Rate Limit Exceeded (> 30 req/min)
             Gateway-->>Client: 429 Too Many Requests ({ "retryAfter": 18 })
         else Allowed
@@ -802,7 +825,7 @@ The dashboard organizes essential campus metrics to be reachable within **one cl
 
 The assistant provides full operational transparency into the agentic reasoning pipeline:
 - **Streaming Tokens:** Assistant responses stream character-by-character over SSE frames (FR-17).
-- **Execution Badges:** Displays dynamic badges above the text indicating tool execution status: `[Tool: get_cafeteria_menu | Cache Hit 10ms]`.
+- **Execution Badges:** Displays dynamic badges above the text indicating tool execution status: `[Tool: get_cafeteria_menu | Cache Hit (target: P95 < 250 ms)]`.
 - **Status Banners:** Visual banners indicate degraded operational states:
   - Amber banner for stale cache fallback: *"Serving cached menu from 10:15 — Dining service unavailable"*.
   - Blue banner for synthetic stubs: *"Simulated library turnstile feed"*.
@@ -845,7 +868,7 @@ The team selected four core use cases as the formal architectural baseline for A
   2. Router classifies query as `DIRECT_WIDGET` mapped to `get_cafeteria_menu`.
   3. Client dispatches direct query to Gateway (`/api/v1/query`), bypassing AI Agent.
   4. Gateway forwards request to MCP Server.
-  5. MCP Server evaluates 3600s Redis cache (`cache:dining:<date>`).
+  5. MCP Server evaluates 3600s cache (`cache:dining:<date>`).
   6. On cache hit, returns cached menu. On miss, connector retrieves data, populating cache.
   7. Client renders Lunch/Dinner tabbed card with calorie metrics.
 - **Alternative / Error Flows:**
@@ -868,7 +891,7 @@ sequenceDiagram
     UI->>Gateway: Direct menu request
     Gateway->>MCP: Forward sanitized tool call
     alt Fresh Cache Hit (< 3600s)
-        MCP-->>Gateway: Return cached menu (< 15ms)
+        MCP-->>Gateway: Return cached menu (target: P95 < 250 ms)
     else Cache Miss
         MCP->>Dining: execute({ date })
         Dining-->>MCP: Return CafeteriaDailyMenu
@@ -1088,7 +1111,7 @@ While a local JavaScript `Map` offers sub-millisecond retrieval, it fails the fu
 The API Gateway sits on the critical path of every client interaction. It must:
 - Terminate external JWT tokens and sanitize inbound headers (FR-07).
 - Execute sliding-window rate limiting on every transaction (FR-08).
-- Introduce minimal middleware latency to satisfy the sub-250ms P95 constraint (NFR-01).
+- Introduce minimal middleware latency to satisfy the P95 < 250 ms (target) constraint (NFR-01).
 
 #### Evaluation Matrix
 
@@ -1148,8 +1171,13 @@ In compliance with the BIL 481 Project Assignment 2 guidelines, all design decis
   - Express Gateway Sample: [`comparisons/Fastify-vs-Express/express-gateway-sample.ts`](../comparisons/Fastify-vs-Express/express-gateway-sample.ts)
 
 ### 4. Automated Offline Test Suites
-- **MCP Server Dispatcher & Registry Suite:** [`tests/mcp-server/dispatcher.test.ts`](../tests/mcp-server/dispatcher.test.ts) (18 tests passing)
-- **Connector & Resilience Test Suite:** [`tests/connectors/mockConnectors.test.ts`](../tests/connectors/mockConnectors.test.ts) (76 tests passing)
+The repository contains a 100% offline-executable, zero-network test suite executed via Vitest (`npm test` / `vitest run`), validating all contracts, mock flows, intent routing, and security boundaries in compliance with NFR-08:
+- **Connector test group (`tests/connectors/`):** [`tests/connectors/`](../tests/connectors/) (76 tests passing across 7 test files, covering mock connectors, cache stores, circuit breaker state machine, config parser, and resilient executor)
+- **Web intent router (`apps/web/tests/routeStudentQuery.test.ts`):** [`apps/web/tests/routeStudentQuery.test.ts`](../apps/web/tests/routeStudentQuery.test.ts) (45 tests passing, validating bilingual normalization and deterministic routing across 40 labeled queries)
+- **MCP server (`tests/mcp-server/dispatcher.test.ts`):** [`tests/mcp-server/dispatcher.test.ts`](../tests/mcp-server/dispatcher.test.ts) (18 tests passing, verifying tool registration, strict input validation, auth guard, and sample mock flows)
+- **API gateway (`apps/api-gateway/tests/jwtAuth.test.ts`):** [`apps/api-gateway/tests/jwtAuth.test.ts`](../apps/api-gateway/tests/jwtAuth.test.ts) (7 tests passing, verifying JWT verification, token stripping, header injection, and rate limiting)
+
+**Overall Test Suite Total:** **146 tests, 10 test files** (0 failures, completed in < 1s offline).
 
 ---
 
@@ -1172,7 +1200,7 @@ The task matrix below records the individual efforts contributed exclusively tow
 | **TSK-DES-05** | Section 3 (Use Cases UC-01–UC-04, Traceability, Sequence Diagrams, Demo Criteria) | Yunus Emre Biçer | Arda Çelik | 0.50 | Not reported | Completed |
 | **TSK-DES-06** | Section 2.1 (Monorepo Layout, Packaging, Codebase Structure) | Arda Çelik | Murat Can Işık | 0.30 | Not recorded | Completed |
 | **TSK-DES-07** | Section 2.2.3 & 2.3.4 (Campus Connectors, Deterministic Mocking, TTL Caching, Resilience) | Arda Çelik | Murat Can Işık | 0.50 | Not recorded | Completed |
-| **TSK-DES-08** | Section 2.3.4 & 2.3.5 (Component Signatures for Connectors, Cache, and Circuit Breakers) | Arda Çelik | Murat Can Işık | 0.30 | Not recorded | Completed |
+| **TSK-DES-08** | Section 2.3.4 (Component Signatures for Connectors, Cache, and Circuit Breakers) | Arda Çelik | Murat Can Işık | 0.30 | Not recorded | Completed |
 | **TSK-DES-09** | Section 4 (Design Decisions: 4.1 Redis vs Memory Map, 4.2 Fastify vs Express Editing) | Arda Çelik | Ahmet Sefa Efendioğlu | 0.40 | Not recorded | Completed |
 | **TSK-DES-10** | Section 2.2.4 & 2.3.5 (API Gateway Architecture, Perimeter Security, Rate Limiter Signatures) | Ahmet Sefa Efendioğlu | Murat Can Işık | 0.15 | Not reported | Completed |
 | **TSK-DES-11** | Section 4.2 Material (Fastify vs Express Benchmark Evaluation & Comparison Code) | Ahmet Sefa Efendioğlu | Arda Çelik | 0.15 | Not reported | Completed |
