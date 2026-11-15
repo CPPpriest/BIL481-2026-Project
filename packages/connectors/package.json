@@ -1,0 +1,30 @@
+{
+  "name": "@campus-orchestrator/connectors",
+  "version": "1.0.0",
+  "description": "Campus data connectors (deterministic mock mode), cache adapters, stale-if-error fallback and circuit breaker for Campus Data Orchestrator",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --root ../.. tests/connectors",
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\""
+  },
+  "dependencies": {
+    "@campus-orchestrator/shared": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "vitest": "^5.1.0"
+  }
+}
