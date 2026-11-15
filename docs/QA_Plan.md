@@ -67,11 +67,11 @@ The task matrix below details the individual work packages executed during Phase
 | **TSK-QA-05** | Final QA cross-review, Markdown compliance audit, and repository integration | Ahmet Sefa Efendioğlu | Murat Can Işık | 0.10 | 0.15 | Completed |
 | **Total Effort** | **QA Plan Deliverable (Phase 2 Component)** | | | **1.50** | **1.60** | **Completed** |
 
-*Note on Phase 2 Effort Accounting:* As specified in Section 3A of the Team Guide, Phase 2 allocates an estimated budget of 3.0 person-hours per member (12.0 person-hours total). Ahmet Sefa Efendioğlu's Phase 2 budget is distributed across:
+*Note on Phase 2 Effort Accounting:* As specified in Section 3A of the Team Guide, Phase 2 allocates an estimated budget of 3.00 person-hours per member (12.00 person-hours total). Ahmet Sefa Efendioğlu's Phase 2 budget is distributed across:
 - `docs/QA_Plan.md` direct drafting and review: **1.50 h estimated** (1.60 h actual).
 - `docs/_sections/sefa-gateway-interface.md` technical handoff: **0.30 h estimated** (0.30 h actual).
-- `apps/api-gateway/` implementation, security tests, and Fastify comparison: **1.20 h estimated** (1.10 h actual).
-- Total recorded Phase 2 effort for Ahmet Sefa Efendioğlu: **3.00 person-hours**.
+- `apps/api-gateway/` implementation, security tests, and Fastify comparison: **1.20 h estimated** (1.00 h actual).
+- Total recorded Phase 2 effort for Ahmet Sefa Efendioğlu: **3.00 h estimated** vs. **2.90 h actual** (`-0.10 h` variance against the planned Phase 2 allocation).
 
 ---
 
@@ -107,21 +107,20 @@ flowchart TD
 #### A. Unit Testing
 - **Scope:** Pure functions, deterministic business logic, regex matching, and schema validators.
 - **Key Modules Tested:**
-  - `apps/web/src/router/routeStudentQuery.ts`: Validates classification of natural language queries into `DIRECT_WIDGET` versus `LLM_AGENT`.
-  - `apps/mcp-server/src/registry/toolDefinitions.ts`: Validates Zod schema bounds and parameter constraints.
-  - `apps/api-gateway/src/auth/jwtVerifier.ts`: Validates signature verification, expiry checks, and claim extraction.
-  - `apps/api-gateway/src/rate-limiter/`: Validates sliding-window counter logic.
-  - In-memory PII regex scrubber: Validates masking of student ID numbers, emails, and full names.
-- **Tooling:** Vitest (Node.js test runner) running in-memory with mock timers.
+  - `apps/web/src/router/routeStudentQuery.ts`: Validates classification of natural language queries into `DIRECT_WIDGET` versus `LLM_AGENT` (`apps/web/tests/routeStudentQuery.test.ts`).
+  - `apps/mcp-server/src/registry/toolDefinitions.ts` & `ToolDispatcher.ts`: Validates Zod schema bounds, parameter constraints, and authorization context guards (`tests/mcp-server/dispatcher.test.ts`).
+  - `apps/api-gateway/src/auth/jwtVerifier.ts` & `tokenTermination.ts`: Validates signature verification, expiry checks, claim extraction, and header stripping (`apps/api-gateway/tests/jwtAuth.test.ts`).
+  - `apps/api-gateway/src/rate-limiter/`: Validates sliding-window counter logic (`InMemoryRateLimiterStore` in Phase 2; Redis-backed store planned for Phase 3).
+  - `packages/connectors/` (`InMemoryCacheStore`, `CircuitBreaker`, `ResilientConnectorExecutor`, deterministic fixtures): Validates seeded mock determinism, TTL cache semantics, stale-if-error fallback, and 3-state circuit breaker transitions (`tests/connectors/`).
+  - In-memory PII regex scrubber *(Planned for Phase 3)*: Will validate masking of student ID numbers, emails, and full names.
+- **Tooling:** Vitest (Node.js test runner) running offline in-memory with mock timers and synthetic fixtures.
 
 #### B. Integration & Contract Testing
-- **Scope:** Inter-service boundaries, HTTP headers, JSON-RPC envelopes, Redis caching, and error handling.
-- **Key Workflows Tested:**
-  - Fastify Gateway → Node.js MCP Server JSON-RPC transport over Streamable HTTP (`/mcp`).
-  - Token termination: Verifies that inbound `Authorization: Bearer <JWT>` is stripped and replaced by sanitized `X-Authenticated-Student-Id` headers.
-  - Redis cache hit/miss behavior, TTL expiration, and `isStale` flag injection upon connector failure.
-  - Circuit breaker trips after 3 consecutive simulated connector failures, entering a 60-second open state.
-- **Tooling:** Vitest, Supertest, ioredis-mock.
+- **Scope:** Inter-service boundaries, HTTP headers, JSON-RPC envelopes, caching/resilience pipelines, and error handling.
+- **Key Workflows Tested (Phase 2 In-Memory vs. Phase 3 Containerized):**
+  - **Phase 2 Implemented:** `packages/connectors` integration with `apps/mcp-server` `ToolDispatcher` (`tests/connectors/dispatcherIntegration.test.ts`), `InMemoryCacheStore` TTL and `isStale` flag propagation (`tests/connectors/resilientExecutor.test.ts`, `tests/connectors/cacheStores.test.ts`), and 3-failure `OPEN` circuit breaker transitions (`tests/connectors/circuitBreaker.test.ts`).
+  - **Phase 3 Planned:** Fastify Gateway → Node.js MCP Server HTTP transport over Streamable HTTP (`/mcp`), live Redis cache hit/miss persistence, and full multi-container Supertest assertions.
+- **Tooling:** Vitest (active in Phase 2); Supertest and live Redis container integration (planned for Phase 3).
 
 #### C. Security & Privacy Testing
 - **Scope:** Perimeter defense, credential leaks, and data sanitization.
@@ -250,7 +249,7 @@ flowchart LR
 - **Expected Result:**
   - Weekday call returns JSON object with `available: true`, `lunch` and `dinner` objects, valid non-empty soup/main dish strings, and `calories > 0`.
   - Weekend call returns `available: false` with a clear descriptive message (`unavailableReason`) without throwing an exception.
-- **Actual Result (Phase 2):** Passed (Verified against sample mock handler).
+- **Actual Result (Phase 2):** Passed (Verified against sample mock handler in `tests/mcp-server/dispatcher.test.ts` and seeded dining connector in `tests/connectors/mockConnectors.test.ts`).
 - **Status:** **Pass**
 
 ---
@@ -269,7 +268,7 @@ flowchart LR
 - **Expected Result:**
   - All departure timestamps in `nextDepartures` are strictly later than 12:00:00 (chronologically sorted; no past departures).
   - Invalid route argument fails Zod schema validation immediately and returns JSON-RPC error code `-32602 (Invalid params)` with an enumerated list of valid routes (`MAIN_RING`, `METRO_LINE`, `DORMITORY_LINE`).
-- **Actual Result (Phase 2):** Passed (Verified against Zod schema and mock departures).
+- **Actual Result (Phase 2):** Passed (Verified against Zod schema and mock departures in `tests/mcp-server/dispatcher.test.ts` and `tests/connectors/mockConnectors.test.ts`).
 - **Status:** **Pass**
 
 ---
@@ -289,7 +288,7 @@ flowchart LR
   - For each floor: `0 ≤ occupiedSeats ≤ maxSeats`.
   - The sum of per-floor `occupiedSeats` exactly equals `totalOccupied`.
   - Because production turnstiles are unavailable, `isSimulated` must be strictly `true`.
-- **Actual Result (Phase 2):** Passed (Verified against sample mock data generator in `tests/mcp-server/dispatcher.test.ts`).
+- **Actual Result (Phase 2):** Passed (Verified against sample mock data generator in `tests/mcp-server/dispatcher.test.ts` and seeded library connector in `tests/connectors/mockConnectors.test.ts`).
 - **Status:** **Pass**
 
 ---
@@ -351,7 +350,7 @@ flowchart LR
   - Step 3 returns cached data in `< 50 ms` with `"isStale": true` and original timestamp.
   - Step 4 trips circuit breaker after 3 failures.
   - Step 5 returns immediate fallback response with 0 network attempts to upstream.
-- **Actual Result (Phase 2):** Not executed — pending implementation (Redis circuit breaker middleware scheduled for Phase 3).
+- **Actual Result (Phase 2):** Not executed against live Redis container — pending Docker Redis integration in Phase 3 (Note: in-memory `CacheStore`, stale-if-error fallback, and 3-state `CircuitBreaker` fault-injection unit and integration assertions are **Passed** across 76 tests in `tests/connectors/resilientExecutor.test.ts`, `tests/connectors/circuitBreaker.test.ts`, and `tests/connectors/`).
 - **Status:** **Planned / Not Run**
 
 ---
@@ -505,7 +504,7 @@ As Release & QA Lead, Ahmet Sefa Efendioğlu maintains the following quality gat
 | **2. QA Plan Completeness** | Contains TOC, first-page Contributors, document-specific Task Matrix (no double-counted hours), QA Strategy, 4 measurable Quality Factors, TC-01..TC-08, and Bug Tracking flow. | Ahmet Sefa Efendioğlu | Verified |
 | **3. Contract & Schema Integrity** | All 4 MCP tool names (`get_cafeteria_menu`, `get_shuttle_schedule`, `get_library_occupancy`, `get_course_schedule`) and TTLs (`3600s`, `120s`, `60s`, `300s`) match Requirements Document; `studentId` excluded from `get_course_schedule` client parameters. | Murat Can Işık & Ahmet Sefa Efendioğlu | Verified |
 | **4. Honest Implementation Reporting** | Working Phase 2 skeletons (`apps/mcp-server`, `apps/web`, `apps/api-gateway`, `packages/connectors`) are clearly separated from Phase 3 planned features; unexecuted tests are marked `Planned / Not Run`. | Entire Team | Verified |
-| **5. Repository Build & Test Gate** | `npm run build` compiles all TypeScript workspaces with 0 errors; `npm test` (`vitest run`) executes offline with 100% pass rate; zero `.env` or secret tokens committed to Git. | Ahmet Sefa Efendioğlu | Verified |
+| **5. Repository Build & Test Gate** | `npm run build` compiles all TypeScript workspaces with 0 errors; `npm test` (`vitest run`) executes offline with 100% pass rate (146 passing tests across 10 test files); zero `.env` or secret tokens committed to Git. | Ahmet Sefa Efendioğlu | Verified |
 | **6. Git Attribution & Traceability** | Descriptive commits pushed by all 4 team members (`@cmuratt`, `@YunusEmre113`, `@ardacelik11`, `@Sefa-Efendioglu`) with clear module ownership and section handoffs (`docs/_sections/`). | Entire Team | Verified |
 
 ---
