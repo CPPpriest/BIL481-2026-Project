@@ -1,0 +1,20 @@
+{
+  "name": "campus-data-orchestrator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Model Context Protocol (MCP) Based Campus Data Orchestrator",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace @campus-orchestrator/shared && npm run build --workspace @campus-orchestrator/connectors && npm run build --workspace @campus-orchestrator/mcp-server && npm run build --workspace @campus-orchestrator/api-gateway && npm run build --workspace @campus-orchestrator/web",
+    "test": "vitest run",
+    "clean": "npm run clean --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^5.4.5",
+    "vitest": "^5.1.0"
+  }
+}

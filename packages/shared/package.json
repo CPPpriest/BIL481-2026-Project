@@ -1,0 +1,24 @@
+{
+  "name": "@campus-orchestrator/shared",
+  "version": "1.0.0",
+  "description": "Shared contracts, domain types, MCP definitions, and constants for Campus Data Orchestrator",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\""
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}
