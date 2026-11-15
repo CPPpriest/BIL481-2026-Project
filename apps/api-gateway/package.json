@@ -1,0 +1,30 @@
+{
+  "name": "@campus-orchestrator/api-gateway",
+  "version": "1.0.0",
+  "description": "Fastify API Gateway & Perimeter Security for Campus Data Orchestrator",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsc && node dist/index.js",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest run --root ../..",
+    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\""
+  },
+  "dependencies": {
+    "@campus-orchestrator/shared": "*",
+    "fastify": "^4.28.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "vitest": "^5.1.0"
+  }
+}
+
