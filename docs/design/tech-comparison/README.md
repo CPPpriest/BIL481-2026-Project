@@ -29,3 +29,36 @@ The comparison is about relational integrity, query expression and operational c
 no latency advantage has been measured. Substring queries can scan in either store and
 must be checked against NFR-05/NFR-11 with the QA Plan workload. Unicode case behaviour
 also depends on the database locale/collation and needs integration verification.
+
+## Authentication: server-side session vs. JWT (Furkan)
+
+Design Document §4.1.3 compares the two ways of keeping a UniHelp user logged in.
+
+| Artifact | Approach | Use |
+|---|---|---|
+| [SessionAuthConfig.java](SessionAuthConfig.java) | Spring Security server-side session, stored with Spring Session JDBC in the existing PostgreSQL | Selected approach |
+| [JwtAuthConfig.java](JwtAuthConfig.java) | Stateless JWT bearer token (Spring Security OAuth2 resource server, HS256) | Rejected alternative |
+
+Both snippets protect the same routes: `POST /api/auth/register`, `POST /api/auth/login` and
+`GET /api/auth/verify` are public, `/api/admin/**` needs the ADMIN role, everything else needs
+an authenticated account. Both hash passwords with BCrypt; that part is identical and only
+shown once.
+
+What differs:
+
+- **Logout / suspension (FR-05, FR-28).** The session version deletes the session on the server,
+  so the cookie stops working on the next request; `SessionRevocation.revokeAll` ends every
+  session of a suspended user. The JWT version cannot withdraw an issued token before `exp`
+  without adding a server-side denylist, which removes its main advantage.
+- **Inactivity timeout (FR-07).** A session has a sliding 60-minute idle timeout through one
+  property. JWT needs short access tokens plus refresh-token rotation to get the same effect.
+- **Browser storage.** The session id is an opaque HttpOnly cookie that JavaScript cannot read.
+  A bearer token must be readable by the SPA, so an XSS bug can steal it. In exchange, the
+  cookie version needs CSRF protection (`CookieCsrfTokenRepository`), the header version does not.
+- **Privacy.** A JWT payload is only Base64-encoded; it must carry the user id, never the e-mail.
+
+These are comparison source artifacts outside Maven's `src` roots; they are **not compiled by
+`backend/mvn verify`** and add no dependency to the backend. The real `SecurityConfig` is
+written in T3.1. No latency was measured; at the NFR-05/NFR-11 load (50 concurrent users,
+one instance) the session look-up cost is not expected to matter, and the QA load test will
+confirm it.
