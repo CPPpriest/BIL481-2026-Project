@@ -14,7 +14,7 @@ assignees: ''
 
 ## Environment
 - Version / commit:
-- Environment: local (Docker) / staging / production
+- Environment: local (Docker) / production
 - Browser and OS (for UI bugs):
 
 ## Steps to reproduce

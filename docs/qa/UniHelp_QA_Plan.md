@@ -42,7 +42,7 @@
 
 Quality assurance in UniHelp is continuous and requirement-driven:
 
-- **Traceable.** Every test case refers to a use case (UC1–UC4) and to the requirement IDs (FR-xx, NFR-xx) of the Requirements Document. Every requirement in the Requirements Document has a “How it will be verified” method, and this plan turns those methods into concrete tests.
+- **Traceable.** Every test case refers to a use case (UC1–UC4) and to the requirement IDs (FR-xx, NFR-xx) of the Requirements Document. Every requirement in the Requirements Document is written so that it can be verified by a test, and every non-functional requirement has a “How it will be verified” method; this plan turns them into concrete tests.
 - **Shift-left.** Unit tests are written in the same sprint as the code they test (Project Plan T3.4, T3.6, T3.11); nothing is merged into `main` without passing CI and at least one review from another team member (NFR-10).
 - **Test pyramid.** Most checks are fast automated unit tests on the service layer, a smaller set of integration and API tests covers the REST endpoints with a real database schema, and a few manual sessions cover usability, accessibility and cross-browser behaviour.
 - **Risk-based.** Security and privacy (authentication, access control, e-mail privacy, message encryption) get the most test effort because they have the highest impact in the Project Plan risk table.
@@ -70,11 +70,11 @@ Roles: Efe (QA / Test Lead) owns this plan, unit/integration tests and the test 
 | Area | Automated | Manual | Reason |
 |---|:-:|:-:|---|
 | Service-layer business rules (validation, lockout, report threshold, permissions) | ✔ | | Deterministic, run on every PR |
-| REST API contracts and status codes | ✔ (Spring Boot Test / MockMvc, Postman/Newman) | ✔ (exploratory with Postman) | Regressions must be caught automatically; exploratory testing finds missing cases |
+| REST API contracts and status codes | ✔ (Spring Boot Test / MockMvc, Postman collection) | ✔ (exploratory with Postman) | Regressions must be caught automatically; exploratory testing finds missing cases |
 | Database mappings, queries, constraints | ✔ (H2 / Testcontainers) | | Repeatable with a clean schema |
 | E-mail privacy in API responses (FR-20, NFR-04) | ✔ (DTO unit test + API test, TC-04) | | Must never regress |
 | Message encryption at rest (NFR-02) | ✔ (encrypt/decrypt unit tests) | ✔ (database inspection) | Inspection confirms no plain text is stored |
-| E-mail verification / notification delivery | ✔ (mocked mail sender) | ✔ (real inbox on staging) | Delivery through the real SMTP provider can only be checked by hand |
+| E-mail verification / notification delivery | ✔ (mocked mail sender) | ✔ (real inbox on the Docker Compose test deployment) | Delivery through the real SMTP provider can only be checked by hand |
 | Security scan | ✔ (OWASP ZAP baseline) | ✔ (access-control and XSS attempts) | Tool finds common issues; logic flaws need a human |
 | Performance | ✔ (k6 scripts) | | Load cannot be produced by hand |
 | Usability | | ✔ | Requires real users and their judgement |
@@ -86,7 +86,7 @@ Roles: Efe (QA / Test Lead) owns this plan, unit/integration tests and the test 
 
 - The GitHub Actions workflow `.github/workflows/ci.yml` runs on **every pull request** and on every push to `main`.
 - It builds the backend with Java 21 and runs `mvn -B verify`, which compiles the code, runs all unit and integration tests and creates the JaCoCo coverage report (uploaded as the `jacoco-report` build artifact).
-- A pull request can be merged only when the CI check is green and at least one other team member has approved it (branch protection on `main`, NFR-10).
+- Team rule: a pull request is merged only when the CI check is green and at least one other team member has approved it (NFR-10). The reviewer checks both before merging.
 - Frontend build and test steps are added to the workflow when the frontend views are implemented (Sprint 1).
 
 ---
@@ -140,13 +140,13 @@ thresholds: {
 
 | Metric | Definition | Target | Tool / how measured | When |
 |---|---|---|---|---|
-| S1 — ZAP high-risk alerts | Number of distinct alerts with risk **High** (`riskcode = 3`) in the OWASP ZAP baseline report of the release candidate | **0** | OWASP ZAP baseline scan (`zap-baseline.py`, official ZAP Docker image) against the HTTPS staging deployment; count read from the JSON report | End of every sprint from Sprint 1 (after T3.1), and as the release gate before M6 |
+| S1 — ZAP high-risk alerts | Number of distinct alerts with risk **High** (`riskcode = 3`) in the OWASP ZAP baseline report of the release candidate | **0** | OWASP ZAP baseline scan (`zap-baseline.py`, official ZAP Docker image) against the release candidate running as an HTTPS Docker Compose test deployment; count read from the JSON report | End of every sprint from Sprint 1 (after T3.1), and as the release gate before M6 |
 | S2 — Open critical/high security bugs | Number of open GitHub Issues with labels `bug` + `security` + (`severity:critical` or `severity:high`) | **0** | GitHub Issues query `is:issue is:open label:security label:"severity:critical"` and the same for `severity:high` (§3.2) | Weekly meeting; release gate before M6 |
 
 **Procedure for S1:**
 
-1. Deploy the release candidate to the staging environment over HTTPS, with seeded test accounts and data only (no real student data). Record commit SHA, ZAP version and target URL.
-2. Run the baseline scan against the SPA and API base URLs: `zap-baseline.py -t <staging-url> -J zap-report.json -r zap-report.html`. The baseline scan spiders the site and applies passive rules; it does not attack the server.
+1. Start the release candidate with Docker Compose as a test deployment over HTTPS, with seeded test accounts and data only (no real student data). Record commit SHA, ZAP version and target URL.
+2. Run the baseline scan against the SPA and API base URLs: `zap-baseline.py -t <test-deployment-url> -J zap-report.json -r zap-report.html`. The baseline scan spiders the site and applies passive rules; it does not attack the server.
 3. Count alerts with `riskcode = 3`. Every High alert opens a `severity:high` (or `severity:critical`) issue with the `security` label. Medium alerts are also opened as issues and triaged; they do not block the release by themselves.
 4. A High alert may be closed as a false positive only with a written reason in the issue, reviewed by a second team member. The ZAP rule is then marked as ignored in the committed rules file. False positives are never removed from the report silently.
 5. Re-run the scan after fixes. S1 is met when the latest scan of the release candidate has 0 High alerts. Store both reports with the test report.
@@ -185,7 +185,7 @@ The PA-2 endpoints are stubs, so no scan result or security compliance is claime
 |---|---|---|---|---|
 | M1 — Service-layer line coverage | Covered lines ÷ total lines of all `*Service*` classes in `com.unihelp.*` | **≥ 70 %** | JaCoCo report produced by `mvn verify` (`backend/target/site/jacoco/`), uploaded by CI | Every PR; checked in review from Sprint 1, enforced as a build rule before M6 |
 | M2 — Cyclomatic complexity | McCabe cyclomatic complexity of each method (number of independent paths) | **≤ 10 per method** | JaCoCo “Cxty” counter per method in the same report | Every PR; a method above 10 must be refactored or justified in the PR |
-| M3 — Reviewed merges | Share of commits on `main` that arrived through an approved pull request | **100 %** | GitHub branch protection and PR history | Continuous |
+| M3 — Reviewed merges | Share of commits on `main` that arrived through an approved pull request | **100 %** | GitHub pull request history (merged PRs and their approvals) compared with `git log --first-parent main` | Continuous |
 
 Interpretation:
 
@@ -286,16 +286,19 @@ Every test case uses the following fields:
 | **Owner** | Furkan Yılmaz |
 
 
-#### TC-06: Case-Insensitive Keyword Search and Empty State Feedback (FR-15, NFR-06)
+#### TC-06 — Case-insensitive keyword search and empty result message
 
-- **Objective:** Verify that `GET /api/posts` correctly filters active posts by case-insensitive keyword substring matching across title and description, and returns an empty page content (`[]`) when no matches are found, enabling the SPA to render `"No posts found"`.
-- **Prerequisites:** Seeded database containing posts with titles/descriptions such as `"Lost blue umbrella"` and `"Textbook for borrow"`.
-- **Test Steps:**
-  1. Send `GET /api/posts?keyword=BLUE` (uppercase query). Verify that post 42 (`"Lost blue umbrella"`) is returned in the content array (`200 OK`).
-  2. Send `GET /api/posts?keyword=umbrella`. Verify post 42 is returned (`200 OK`).
-  3. Send `GET /api/posts?keyword=nonexistentkeyword12345`. Verify response status is `200 OK` with an empty content array (`[]`), allowing the frontend to display the `"No posts found"` message.
-- **Expected Result:** Case-insensitive substring matching succeeds for both mixed and uppercase queries; unmatched queries yield an empty page without server errors.
-- **Owner:** Muhammed Taha Kaya
+| Field | Value |
+|---|---|
+| **ID** | TC-06 |
+| **Title** | Keyword search matches title and description case-insensitively, newest first, and an unmatched keyword shows "No posts found" |
+| **Related UC / FR** | UC3 · FR-14, FR-15 |
+| **Preconditions** | 1. A verified, active student is logged in and has a valid session. 2. The database is seeded with ACTIVE posts: P1 = 42 `Lost blue umbrella` (created 10-11-2026), P2 `Textbook for borrow`, description `Blue cover, Calculus I` (created 12-11-2026), P3 `Roommate wanted` (no "blue" in title or description). |
+| **Steps** | 1. Call `GET /api/posts?keyword=BLUE`. 2. Call `GET /api/posts?keyword=umbrella`. 3. Call `GET /api/posts?keyword=nonexistentkeyword12345`. 4. In the SPA, search the feed for `nonexistentkeyword12345` and check the message shown. |
+| **Test Data** | Keywords: `BLUE` (uppercase, matches a title and a description), `umbrella` (lowercase substring of a title), `nonexistentkeyword12345` (no match). |
+| **Expected Result** | 1. Step 1 returns **200** with exactly P2 and P1, in this order (newest first); P3 is not returned. 2. Step 2 returns **200** with only P1. 3. Step 3 returns **200** with an empty content array (`[]`), not an error. 4. The SPA shows **"No posts found"**. |
+| **Type** | Auto — Spring Boot Test + MockMvc for steps 1–3 (Sprint 2, after T3.5) and the same assertions in the Postman collection; React Testing Library for step 4 (T3.8). Not an implemented PA-2 test: the search endpoint is a stub. |
+| **Owner** | Muhammed Taha Kaya |
 
 ### 3.2 Bug Tracking
 

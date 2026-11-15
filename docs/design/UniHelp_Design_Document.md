@@ -710,9 +710,9 @@ public interface MessageEncryptor {
 
 | Method & path | Description | Request body | Success | Errors |
 |---|---|---|---|---|
-| `POST /api/posts/{id}/conversations` | Start a conversation with the author of post `{id}` and send the first message. If the user already has a conversation for this post, the message is added to it. | `StartConversationRequest` | `201 Created` + `ConversationDto` | `400` invalid content · `404` post not found / not visible · `409` post is Resolved or user is the author · `403` user is blocked by the author (FR-24) |
+| `POST /api/posts/{id}/conversations` | Start a conversation with the author of post `{id}` and send the first message. If the user already has a conversation for this post, the message is added to it. | `StartConversationRequest` | `201 Created` + `ConversationDto` | `400` invalid content · `401` not logged in · `404` post not found / not visible · `409` post is Resolved or user is the author · `403` user is blocked by the author (FR-24) |
 | `GET /api/conversations` | List the current user's conversations, newest activity first, with unread counter. | — | `200 OK` + `ConversationSummaryDto[]` | `401` not logged in |
-| `POST /api/conversations/{id}/messages` | Send a message into conversation `{id}`. | `SendMessageRequest` | `201 Created` + `MessageDto` | `400` invalid content · `403` not a participant or blocked · `404` conversation not found · `409` post is Resolved |
+| `POST /api/conversations/{id}/messages` | Send a message into conversation `{id}`. | `SendMessageRequest` | `201 Created` + `MessageDto` | `400` invalid content · `401` not logged in · `403` not a participant or blocked · `404` conversation not found · `409` post is Resolved |
 
 Example — `POST /api/posts/42/conversations`:
 
@@ -1083,7 +1083,7 @@ sequenceDiagram
     PR->>DB: INSERT post and optional image metadata in transaction
     DB-->>PR: Stored post
     PR-->>PS: Post
-    Note over PS: Resolve author alias through auth; never return entity
+    Note over PS: Resolve author alias through auth, never return entity
     PS-->>PC: PostDetailDto
     PC-->>UI: 201 Created (alias only)
     UI->>PC: PUT or DELETE /api/posts/{id}
@@ -1092,10 +1092,10 @@ sequenceDiagram
     PR->>DB: SELECT post
     DB-->>PS: Stored author and state
     alt current user is not author
-        PS-->>PC: Forbidden; no write or upload
+        PS-->>PC: Forbidden, no write or upload
         PC-->>UI: 403 Forbidden
     else current user is author
-        PS->>PS: Check state; sanitize edited text and validate image
+        PS->>PS: Check state, sanitize edited text and validate image
         PS->>PR: Save update or delete and coordinate cleanup
         PR->>DB: Commit mutation and dependent records
         PS-->>PC: Detail or no content
@@ -1106,7 +1106,7 @@ sequenceDiagram
     PS->>PR: Load post, verify author, save RESOLVED
     PR->>DB: UPDATE status in transaction
     PS-->>PC: PostDetailDto (RESOLVED)
-    PC-->>UI: 200; Resolved badge, messaging disabled
+    PC-->>UI: 200, Resolved badge, messaging disabled
 ```
 
 **Alternative/error flows:** bad title/description or category/subtype → 400; unsupported image → 400, image > 5 MB → 413; missing post → 404; non-author mutations → 403. Sanitize then validate again so stripped/neutralized input cannot evade the text limits. On failure there is no persisted change; temporary uploaded bytes are discarded. Authorization is checked before storing an image. Existing RESOLVED posts may be edited without reopening or accepting new messages; hidden/archived edits/resolution return 409. Deletion is a separate permanent operation, not an extra status.
