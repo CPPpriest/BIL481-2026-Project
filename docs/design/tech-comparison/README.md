@@ -62,3 +62,20 @@ These are comparison source artifacts outside Maven's `src` roots; they are **no
 written in T3.1. No latency was measured; at the NFR-05/NFR-11 load (50 concurrent users,
 one instance) the session look-up cost is not expected to matter, and the QA load test will
 confirm it.
+## Frontend framework: React vs. Vue (Taha)
+
+Design Document §4.1.4 compares **React 18** and **Vue 3** on the same `PostCard` feed card (`PostCardDto` from §2.3.2: `id`, `title`, `descriptionSnippet`, `category`, `subtype`, `status`, `createdAt`, `authorAlias`).
+
+| Artifact | Approach | Use |
+|---|---|---|
+| [PostCard.jsx](PostCard.jsx) | React 18 function component with JSX | Selected approach; aligns with `frontend/src/components/PostCard.jsx` |
+| [PostCard.vue](PostCard.vue) | Vue 3 Single-File Component (`<script setup>`) | Rejected alternative; comparison artifact only |
+
+Both components render post text strictly as escaped text nodes (supporting FR-13 XSS prevention), display only `authorAlias` (FR-14, FR-20, NFR-04), show a `Resolved` badge when `status === 'RESOLVED'` (FR-12), and expose `open` and `report` actions.
+
+What differs:
+
+- **Component contract & syntax.** React expresses props (`{ post, onOpen, onReport }`) and conditional rendering (`&&`) as plain JavaScript function parameters and expressions. Vue splits logic and markup across `<script setup>` compiler macros (`defineProps`, `defineEmits`) and custom template directives (`v-if`, `@click`).
+- **Testing & PA-1 stack alignment.** PA-1 Project Definition §8.2 and QA Plan §1.2 standardize on React.js with React Testing Library (`frontend/`), avoiding Vue SFC compiler plugins (`@vitejs/plugin-vue`) and extra onboarding cost (Risk R1).
+
+Neither file is imported by the production Vite bundle; `PostCard.vue` adds no Vue dependency to `frontend/package.json`.

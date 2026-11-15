@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 380" font-family="system-ui, sans-serif" font-size="12" fill="#0f172a">
+  <rect width="860" height="380" fill="#f8fafc" />
+  <rect x="16" y="16" width="560" height="348" rx="6" fill="#ffffff" stroke="#475569" stroke-width="2" />
+  <text x="32" y="42" font-weight="bold" font-size="14">Desktop (1280px+) — Register, Verify & Log In (UC1: FR-01..FR-05)</text>
+  <line x1="16" y1="54" x2="576" y2="54" stroke="#cbd5e1" />
+  <rect x="40" y="72" width="245" height="270" rx="6" fill="#f8fafc" stroke="#94a3b8" />
+  <text x="56" y="96" font-weight="bold" font-size="13">Register (/register)</text>
+  <text x="56" y="116" fill="#475569" font-size="11">University e-mail (@etu.edu.tr only)</text>
+  <rect x="56" y="122" width="213" height="28" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="64" y="140" fill="#64748b">student@etu.edu.tr</text>
+  <text x="56" y="168" fill="#475569" font-size="11">Password (8-72 chars, 1 upper, 1 digit)</text>
+  <rect x="56" y="174" width="213" height="28" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="64" y="192" fill="#64748b">••••••••••</text>
+  <rect x="56" y="214" width="213" height="30" rx="4" fill="#cbd5e1" stroke="#475569" />
+  <text x="136" y="233" font-weight="bold">Register</text>
+  <rect x="56" y="256" width="213" height="72" rx="4" fill="#ffffff" stroke="#94a3b8" stroke-dasharray="4" />
+  <text x="64" y="276" font-weight="bold" font-size="11">Verify View (/verify?token=...)</text>
+  <text x="64" y="294" fill="#475569" font-size="11">24h single-use link -> ACTIVE</text>
+  <text x="64" y="312" fill="#475569" font-size="11">Auto alias: BlueOwl482 (FR-04)</text>
+  <rect x="307" y="72" width="245" height="270" rx="6" fill="#f8fafc" stroke="#94a3b8" />
+  <text x="323" y="96" font-weight="bold" font-size="13">Log In (/login)</text>
+  <text x="323" y="116" fill="#475569" font-size="11">University e-mail</text>
+  <rect x="323" y="122" width="213" height="28" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="331" y="140" fill="#64748b">student@etu.edu.tr</text>
+  <text x="323" y="168" fill="#475569" font-size="11">Password</text>
+  <rect x="323" y="174" width="213" height="28" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="331" y="192" fill="#64748b">••••••••••</text>
+  <rect x="323" y="214" width="213" height="30" rx="4" fill="#cbd5e1" stroke="#475569" />
+  <text x="408" y="233" font-weight="bold">Log in</text>
+  <rect x="323" y="256" width="213" height="72" rx="4" fill="#ffffff" stroke="#94a3b8" stroke-dasharray="4" />
+  <text x="331" y="276" fill="#475569" font-size="11">5 failed tries -> 15m lock (423)</text>
+  <text x="331" y="294" fill="#475569" font-size="11">Non-campus domain -> 400 error</text>
+  <text x="331" y="312" fill="#475569" font-size="11">HttpOnly 60m session cookie</text>
+  <rect x="604" y="16" width="240" height="348" rx="14" fill="#ffffff" stroke="#475569" stroke-width="2" />
+  <text x="622" y="42" font-weight="bold" font-size="13">Mobile (360px) — Auth</text>
+  <line x1="604" y1="54" x2="844" y2="54" stroke="#cbd5e1" />
+  <text x="622" y="78" font-weight="bold">UniHelp Campus Sign In</text>
+  <rect x="622" y="92" width="204" height="28" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="630" y="110" fill="#64748b">student@etu.edu.tr</text>
+  <rect x="622" y="130" width="204" height="28" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="630" y="148" fill="#64748b">Password</text>
+  <rect x="622" y="170" width="204" height="32" rx="4" fill="#cbd5e1" stroke="#475569" />
+  <text x="702" y="190" font-weight="bold">Log in</text>
+  <text x="622" y="224" fill="#475569" font-size="11">Need an account? Register</text>
+  <rect x="622" y="242" width="204" height="96" rx="4" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="4" />
+  <text x="630" y="264" font-weight="bold" font-size="11">Inline Validation Banner</text>
+  <text x="630" y="284" fill="#475569" font-size="11">"A verified university e-mail</text>
+  <text x="630" y="300" fill="#475569" font-size="11">address is required" (FR-01)</text>
+  <text x="630" y="320" fill="#475569" font-size="11">Full-width stacked controls</text>
+</svg>

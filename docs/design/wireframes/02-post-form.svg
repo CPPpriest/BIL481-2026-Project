@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 380" font-family="system-ui, sans-serif" font-size="12" fill="#0f172a">
+  <rect width="860" height="380" fill="#f8fafc" />
+  <rect x="16" y="16" width="560" height="348" rx="6" fill="#ffffff" stroke="#475569" stroke-width="2" />
+  <text x="32" y="42" font-weight="bold" font-size="14">Desktop (1280px+) — Create / Edit Post Form (UC2: FR-09..FR-11, FR-13)</text>
+  <line x1="16" y1="54" x2="576" y2="54" stroke="#cbd5e1" />
+  <text x="36" y="78" fill="#475569" font-size="11">Category (LOST_FOUND | STUDENT_COOPERATION)</text>
+  <rect x="36" y="84" width="248" height="28" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="46" y="102">Lost & Found [v]</text>
+  <text x="304" y="78" fill="#475569" font-size="11">Sub-type (LOST | FOUND | BOOK | ROOMMATE | OTHER)</text>
+  <rect x="304" y="84" width="248" height="28" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="314" y="102">Lost [v]</text>
+  <text x="36" y="132" fill="#475569" font-size="11">Title (required, 5-100 characters)</text>
+  <rect x="36" y="138" width="516" height="28" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="46" y="156" fill="#64748b">Lost blue umbrella</text>
+  <text x="36" y="186" fill="#475569" font-size="11">Description (up to 2,000 characters; sanitized server-side, FR-13)</text>
+  <rect x="36" y="192" width="516" height="72" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="46" y="214" fill="#64748b">Left near the library entrance around noon...</text>
+  <text x="36" y="282" fill="#475569" font-size="11">Location (optional free text)</text>
+  <rect x="36" y="288" width="248" height="28" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="46" y="306" fill="#64748b">Main Library Entrance</text>
+  <text x="304" y="282" fill="#475569" font-size="11">Optional Single Image (JPEG/PNG <= 5 MB, FR-10)</text>
+  <rect x="304" y="288" width="248" height="28" rx="4" fill="#f1f5f9" stroke="#64748b" stroke-dasharray="4" />
+  <text x="314" y="306" fill="#475569">[Choose JPEG/PNG file...]</text>
+  <rect x="422" y="326" width="130" height="28" rx="4" fill="#cbd5e1" stroke="#475569" />
+  <text x="448" y="344" font-weight="bold">Publish post</text>
+  <rect x="604" y="16" width="240" height="348" rx="14" fill="#ffffff" stroke="#475569" stroke-width="2" />
+  <text x="622" y="42" font-weight="bold" font-size="13">Mobile (360px) — Post Form</text>
+  <line x1="604" y1="54" x2="844" y2="54" stroke="#cbd5e1" />
+  <rect x="622" y="68" width="204" height="26" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="630" y="85">Category: Lost & Found [v]</text>
+  <rect x="622" y="102" width="204" height="26" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="630" y="119">Sub-type: Lost [v]</text>
+  <rect x="622" y="136" width="204" height="26" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="630" y="153" fill="#64748b">Title (5-100 chars)</text>
+  <rect x="622" y="170" width="204" height="68" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="630" y="190" fill="#64748b">Description (<= 2,000 chars)</text>
+  <rect x="622" y="246" width="204" height="26" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="630" y="263" fill="#64748b">Location (optional)</text>
+  <rect x="622" y="280" width="204" height="28" rx="4" fill="#f1f5f9" stroke="#64748b" stroke-dasharray="4" />
+  <text x="630" y="298" fill="#475569">+ Attach JPEG/PNG (<= 5 MB)</text>
+  <rect x="622" y="318" width="204" height="30" rx="4" fill="#cbd5e1" stroke="#475569" />
+  <text x="686" y="337" font-weight="bold">Publish post</text>
+</svg>

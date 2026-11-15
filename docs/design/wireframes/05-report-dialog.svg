@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 340" font-family="system-ui, sans-serif" font-size="12" fill="#0f172a">
+  <rect width="860" height="340" fill="#f8fafc" />
+  <rect x="16" y="16" width="560" height="308" rx="6" fill="#e2e8f0" stroke="#475569" stroke-width="2" />
+  <text x="32" y="42" font-weight="bold" font-size="14">Desktop (1280px+) — Report Post Modal Dialog (UC4: FR-25)</text>
+  <rect x="136" y="58" width="320" height="246" rx="8" fill="#ffffff" stroke="#334155" stroke-width="2" />
+  <text x="156" y="84" font-weight="bold" font-size="13">Report Post #42</text>
+  <text x="156" y="106" fill="#475569" font-size="11">Reason (FRAUD | SPAM | OFFENSIVE_CONTENT | OTHER)</text>
+  <rect x="156" y="112" width="280" height="28" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="166" y="130">Fraud [v]</text>
+  <text x="156" y="158" fill="#475569" font-size="11">Optional comment (<= 500 characters)</text>
+  <rect x="156" y="164" width="280" height="64" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="166" y="184" fill="#64748b" font-size="11">Asks for a deposit before returning item...</text>
+  <text x="156" y="246" fill="#b91c1c" font-size="10">Duplicate 409: "You have already reported this post."</text>
+  <rect x="266" y="260" width="74" height="28" rx="4" fill="#f8fafc" stroke="#64748b" />
+  <text x="284" y="278">Cancel</text>
+  <rect x="348" y="260" width="88" height="28" rx="4" fill="#cbd5e1" stroke="#475569" />
+  <text x="358" y="278" font-weight="bold">Submit report</text>
+  <rect x="604" y="16" width="240" height="308" rx="14" fill="#e2e8f0" stroke="#475569" stroke-width="2" />
+  <text x="622" y="42" font-weight="bold" font-size="13">Mobile (360px) — Dialog</text>
+  <rect x="616" y="68" width="216" height="240" rx="8" fill="#ffffff" stroke="#334155" stroke-width="2" />
+  <text x="630" y="92" font-weight="bold">Report Post #42</text>
+  <rect x="630" y="104" width="188" height="28" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="638" y="122">Reason: Fraud [v]</text>
+  <rect x="630" y="142" width="188" height="72" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="638" y="162" fill="#64748b" font-size="11">Optional comment...</text>
+  <rect x="630" y="226" width="188" height="30" rx="4" fill="#cbd5e1" stroke="#475569" />
+  <text x="684" y="245" font-weight="bold">Submit report</text>
+  <rect x="630" y="264" width="188" height="28" rx="4" fill="#f8fafc" stroke="#64748b" />
+  <text x="705" y="282">Cancel</text>
+</svg>
