@@ -1448,7 +1448,6 @@ Suspension takes effect at once because sessions are stored on the server and de
 ---
 
 ## 4. Design Decisions
-
 ### 4.1 Technology Comparisons
 
 #### 4.1.1 PostgreSQL vs. MongoDB (Enis)
@@ -1498,7 +1497,17 @@ PA-1 fixes Spring Security and "session handling" (Project Definition §3, §8.2
 
 **Result.** UniHelp is one monolith serving one campus, so the main advantage of JWT does not apply: no session store shared between many services or instances. The requirements that matter here are immediate logout and suspension, a 60-minute idle timeout and minimal exposure to XSS, and the server-side session handles all of them with Spring Security defaults. Sessions are kept in the existing PostgreSQL through Spring Session JDBC, so no new infrastructure is needed. The extra CSRF protection is a known, built-in Spring Security feature. Committed comparable snippets: [`SessionAuthConfig.java`](tech-comparison/SessionAuthConfig.java) and [`JwtAuthConfig.java`](tech-comparison/JwtAuthConfig.java), explained in [`README.md`](tech-comparison/README.md). They are design artifacts outside the Maven build; no latency was measured.
 
-<!-- TODO: team — add only any remaining technology comparisons assigned to other members. -->
+#### 4.1.4 Frontend State Management: React Context / Local State vs. Redux Toolkit (Taha)
+
+| Criterion | React Context API + Local `useState`/`useEffect` | Redux Toolkit (Global Store) |
+|---|---|---|
+| Application scale & complexity | UniHelp frontend consists of lightweight views (Feed, Detail, Form, Conversations, Admin) with localized state | Designed for large-scale applications with heavily shared, deeply nested global state trees |
+| Boilerplate & development speed | Minimal boilerplate; quick setup ideal for a 4-person academic project timeline within Sprint 1–3 | Significant boilerplate (slices, actions, reducers, store configuration) adding unnecessary overhead |
+| API Integration | Direct integration with `unihelpApi.js` fetch wrappers inside component lifecycle or custom hooks | Requires async thunks or RTK Query wrappers, introducing extra abstraction layers |
+| Team expertise & learning curve | Matches existing React 18 knowledge across the team with negligible training overhead | Steeper learning curve for team members focusing primarily on backend or QA tasks |
+| Decision | **Selected: React Context & Local State** | Rejected due to over-engineering for a single-campus monolithic SPA scope |
+
+**Result.** For UniHelp's scope, localized component state combined with React Context for authentication status (`authContext`) provides clean, maintainable separation without introducing external global state dependencies.
 
 ### 4.2 Justifications
 
@@ -1516,7 +1525,9 @@ PA-1 fixes Spring Security and "session handling" (Project Definition §3, §8.2
 
 Alternatives such as Node.js/Express or Django would mean a different language and security stack from the agreed PA-1 plan and the existing skeleton, without helping any requirement. **Authentication** uses server-side sessions, as decided in §4.1.3.
 
-<!-- TODO: team — add justifications for choices owned by other members. -->
+**Messaging module & E-mail delivery (Efe).** The messaging architecture uses a dedicated module with private conversations linked to posts and asynchronous encryption at rest, satisfying NFR-02 and FR-19–FR-21. Storing only AES-256-GCM ciphertext and IV prevents plaintext leakage even if database storage is compromised, while the repository query patterns support ordered conversation retrieval without loading unneeded data. Mocked e-mail delivery via Spring Mail in unit tests ensures reliable registration token distribution without depending on external SMTP availability during development.
+
+**Frontend architecture & UI responsiveness (Taha).** React 18.3 combined with Vite and responsive CSS grid/flexbox layouts was chosen to implement the single-page application (NFR-06, NFR-07, NFR-08). This ensures a smooth, mobile-first user experience across viewports ranging from `360 px` to `1920 px` while strictly enforcing accessibility standards (WCAG 2.1 Level AA touch targets and focus visibility) and preventing e-mail exposure on shared visual components.
 
 ---
 
@@ -1547,7 +1558,28 @@ Alternatives such as Node.js/Express or Django would mean a different language a
 | Description, auth/report/admin design and API, UC1/UC4 diagrams, auth decision, framework justification | This document §§1.1, 2.2.1, 2.2.4, 2.3.1, 2.3.4, 3.2, 3.5, 4.1.3, 4.2 |
 | Security metrics and test cases TC-01, TC-02, TC-05 | `docs/qa/UniHelp_QA_Plan.md` §2.2, §3.1 |
 
-<!-- TODO: team — list remaining committed artifacts owned by other members. -->
+**Efe Deniz Kahvecioğlu's committed artifacts:**
+
+| Artifact | Repository path |
+|---|---|
+| Repository skeleton, Docker and Docker Compose configuration | `backend/pom.xml`, `backend/Dockerfile`, `docker-compose.yml`, `backend/src/main/resources/application.yml` |
+| Message module entities, repositories and interfaces | `backend/src/main/java/com/unihelp/message/{Conversation,Message,ConversationRepository,MessageRepository,MessageService,MessageEncryptor}.java` |
+| Message encryption implementation and DTOs | `backend/src/main/java/com/unihelp/message/impl/AesGcmMessageEncryptor.java`, `…/message/dto/` |
+| Message DTO privacy test suite | `backend/src/test/java/com/unihelp/message/MessageDtoPrivacyTest.java` |
+| Test strategy, QA plan structure, performance and maintainability metrics, bug tracking workflow | `docs/qa/UniHelp_QA_Plan.md` §§1, 2.4, 3.2 |
+| Technology stack, UML diagrams, messaging design and data flow | This document §§1.3, 1.4, 2.2.3, 2.3.3, 3.4 |
+
+**Muhammed Taha Kaya's committed artifacts:**
+
+| Artifact | Repository path |
+|---|---|
+| React SPA root, router configuration and responsive layout shell | `frontend/src/{main.jsx,App.jsx,styles.css}`, `frontend/index.html`, `frontend/vite.config.js` |
+| Frontend API client wrapper for all REST endpoints | `frontend/src/api/unihelpApi.js` |
+| Reusable UI components (`PostCard`, accessible modal `ReportDialog`) | `frontend/src/components/{PostCard.jsx,ReportDialog.jsx}` |
+| Route-level page views (Auth, Feed, Post Detail, Form, Conversations, Admin) | `frontend/src/pages/` |
+| Low-fidelity vector wireframes for all four use cases (Desktop & Mobile) | `docs/design/wireframes/` |
+| Frontend technology comparison and state management evaluation | `docs/design/tech-comparison/` |
+| Use case selection and requirement mapping (§3.1), frontend interface specifications (§2.3.5), visual interface wireframe mapping (§2.4), usability metrics (§2.3 of QA plan), and TC-06 search test case | This document §2.3.5, §2.4, §3.1; `docs/qa/UniHelp_QA_Plan.md` §2.3, §3.1 (TC-06) |
 
 ---
 

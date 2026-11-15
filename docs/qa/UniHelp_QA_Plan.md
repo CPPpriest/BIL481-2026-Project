@@ -307,9 +307,17 @@ Every test case uses the following fields:
 | **Type** | Auto — Spring Boot Test + MockMvc against PostgreSQL (Testcontainers, needed for the row lock) when T3.9/T3.10 are implemented. Concurrency variant, run separately on a fresh post with 3 reports: two new students report at the same moment → exactly one HIDDEN transition, 5 report rows, no 500 error. The API steps are repeated in Postman; the step-2 message in the report dialog is checked with React Testing Library. Not an implemented PA-2 test: stubs return 501. |
 | **Owner** | Furkan Yılmaz |
 
-#### TC-06
 
-<!-- TODO: owner to be assigned -->
+#### TC-06: Case-Insensitive Keyword Search and Empty State Feedback (FR-15, NFR-06)
+
+- **Objective:** Verify that `GET /api/posts` correctly filters active posts by case-insensitive keyword substring matching across title and description, and returns an empty page content (`[]`) when no matches are found, enabling the SPA to render `"No posts found"`.
+- **Prerequisites:** Seeded database containing posts with titles/descriptions such as `"Lost blue umbrella"` and `"Textbook for borrow"`.
+- **Test Steps:**
+  1. Send `GET /api/posts?keyword=BLUE` (uppercase query). Verify that post 42 (`"Lost blue umbrella"`) is returned in the content array (`200 OK`).
+  2. Send `GET /api/posts?keyword=umbrella`. Verify post 42 is returned (`200 OK`).
+  3. Send `GET /api/posts?keyword=nonexistentkeyword12345`. Verify response status is `200 OK` with an empty content array (`[]`), allowing the frontend to display the `"No posts found"` message.
+- **Expected Result:** Case-insensitive substring matching succeeds for both mixed and uppercase queries; unmatched queries yield an empty page without server errors.
+- **Owner:** Muhammed Taha Kaya
 
 ### 3.2 Bug Tracking
 
