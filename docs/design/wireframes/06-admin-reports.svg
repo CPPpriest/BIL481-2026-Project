@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 360" font-family="system-ui, sans-serif" font-size="12" fill="#0f172a">
+  <rect width="860" height="360" fill="#f8fafc" />
+  <rect x="16" y="16" width="560" height="328" rx="6" fill="#ffffff" stroke="#475569" stroke-width="2" />
+  <text x="32" y="42" font-weight="bold" font-size="14">Desktop (1280px+) — Admin Reports & Moderation Panel (UC4: FR-26..FR-28)</text>
+  <line x1="16" y1="54" x2="576" y2="54" stroke="#cbd5e1" />
+  <rect x="30" y="68" width="532" height="28" fill="#e2e8f0" stroke="#64748b" />
+  <text x="40" y="86" font-weight="bold" font-size="11">Post & Alert</text>
+  <text x="222" y="86" font-weight="bold" font-size="11">Author Alias</text>
+  <text x="306" y="86" font-weight="bold" font-size="11">Status</text>
+  <text x="358" y="86" font-weight="bold" font-size="11">Open</text>
+  <text x="394" y="86" font-weight="bold" font-size="11">Post Actions</text>
+  <text x="504" y="86" font-weight="bold" font-size="11">Account</text>
+  <rect x="30" y="96" width="532" height="62" fill="#ffffff" stroke="#94a3b8" />
+  <text x="40" y="116" font-weight="bold">Lost blue umbrella (#42)</text>
+  <text x="40" y="134" fill="#b91c1c" font-size="11">[ALERT: Auto-hidden >3 reports]</text>
+  <text x="222" y="124">BlueOwl482</text>
+  <text x="306" y="124" font-weight="bold">HIDDEN</text>
+  <text x="364" y="124">4</text>
+  <text x="394" y="124">[Restore] [Remove]</text>
+  <text x="504" y="124">[Suspend]</text>
+  <rect x="30" y="158" width="532" height="54" fill="#ffffff" stroke="#94a3b8" />
+  <text x="40" y="182" font-weight="bold">Roommate near campus (#51)</text>
+  <text x="222" y="182">GreenFox107</text>
+  <text x="306" y="182">ACTIVE</text>
+  <text x="364" y="182">2</text>
+  <text x="394" y="182">[Restore] [Remove]</text>
+  <text x="504" y="182">[Suspend]</text>
+  <rect x="30" y="226" width="532" height="98" rx="4" fill="#f8fafc" stroke="#cbd5e1" />
+  <text x="42" y="246" font-weight="bold" font-size="11">Expanded Report Entries for Post #42 (Alias-only, FR-27 / NFR-04)</text>
+  <text x="42" y="266" fill="#475569" font-size="11">• GreenFox107 — FRAUD: "Asks for a deposit before returning the item."</text>
+  <text x="42" y="284" fill="#475569" font-size="11">• CampusCat310 — SPAM · SwiftHawk904 — OFFENSIVE_CONTENT · CalmBear112 — OTHER</text>
+  <text x="42" y="306" fill="#64748b" font-size="11">Restore -> ACTIVE & marks reports reviewed; Suspend -> ends active sessions immediately.</text>
+  <rect x="604" y="16" width="240" height="328" rx="14" fill="#ffffff" stroke="#475569" stroke-width="2" />
+  <text x="622" y="42" font-weight="bold" font-size="13">Mobile (360px) — Admin</text>
+  <line x1="604" y1="54" x2="844" y2="54" stroke="#cbd5e1" />
+  <rect x="620" y="68" width="208" height="156" rx="6" fill="#f8fafc" stroke="#94a3b8" />
+  <text x="630" y="88" font-weight="bold">Lost blue umbrella</text>
+  <text x="630" y="106" fill="#b91c1c" font-size="11">[ALERT: HIDDEN · 4 reports]</text>
+  <text x="630" y="124" fill="#475569" font-size="11">Author: BlueOwl482</text>
+  <rect x="630" y="138" width="88" height="28" rx="4" fill="#cbd5e1" stroke="#475569" />
+  <text x="652" y="156" font-weight="bold">Restore</text>
+  <rect x="728" y="138" width="88" height="28" rx="4" fill="#fee2e2" stroke="#b91c1c" />
+  <text x="750" y="156" fill="#b91c1c" font-weight="bold">Remove</text>
+  <rect x="630" y="176" width="186" height="28" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="660" y="194">Suspend / Unsuspend</text>
+</svg>

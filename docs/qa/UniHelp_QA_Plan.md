@@ -5,23 +5,19 @@
 | **Course** | BIL 481 Software Engineering — Project Assignment 2 |
 | **Project** | UniHelp — Campus Helping Platform |
 | **Document** | Quality Assurance Plan |
-| **Version** | 0.1 (draft) |
+| **Version** | 1.0 (Final) |
 | **Due date** | 15-11-2026 |
 
 ## Contributors
 
-<!-- TODO: Taha — finalize the contributors list (name, role, sections written) for the first page. -->
-
-| Name | Role |
-|---|---|
-| Furkan Yılmaz | |
-| Efe Deniz Kahvecioğlu | QA / Test Lead |
-| Enis Talha Öztepe | |
-| Muhammed Taha Kaya | |
+| Name | Role | GitHub | Sections Written |
+|---|---|---|---|
+| Furkan Yılmaz | Project Manager, Backend Developer (Authentication, Security, Reporting, Notifications) | `@furylmz` | §2.2, TC-01, TC-02, TC-05 |
+| Efe Deniz Kahvecioğlu | QA / Test Lead, DevOps Engineer, Backend Developer (Messaging, Data Lifecycle) | `@efed3n1z` | §1, §2.4, §3.1 template, TC-04, §3.2 |
+| Enis Talha Öztepe | Software Architect, Backend Developer (Posts, Search, Admin, Database) | `@enisoztepe` | §2.1, TC-03 |
+| Muhammed Taha Kaya | Requirements Analyst, UI/UX Designer, Frontend Developer | `@mt-kaya` | §2.3, TC-06, ToC & final review |
 
 ## Table of Contents
-
-<!-- TODO: Taha — finalize the table of contents after all sections are written. -->
 
 1. [Quality Assurance Strategy](#1-quality-assurance-strategy)
    1. [Overview](#11-overview)
@@ -101,7 +97,7 @@ Roles: Efe (QA / Test Lead) owns this plan, unit/integration tests and the test 
 |---|---|---|---|---|
 | Performance | Feed/search responsiveness under representative campus load | p95 HTTP response time per feed and search scenario, with 50 concurrent users and seeded data | p95 < 2,000 ms for each scenario; support 5,000 users / 20,000 posts | Enis |
 | Security | Resistance to the OWASP Top 10 risks relevant to UniHelp (XSS, injection, broken authentication/access control) | (S1) number of **High**-risk alerts in the OWASP ZAP baseline scan; (S2) number of **open critical/high security bugs** | S1 = 0 and S2 = 0 before release (NFR-03) | Furkan |
-| Usability | <!-- TODO: Taha --> | | | Taha |
+| Usability | Efficiency, intuitiveness and user satisfaction during campus interactions | Task completion rate, task duration, and System Usability Scale (SUS) / satisfaction score from moderated sessions with at least 10 students | ≥ 90 % task completion within 3 minutes per core flow; average satisfaction ≥ 80 % ("easy" or "very easy") | Taha |
 | Maintainability | Ease of understanding, changing and testing the codebase | Service-layer line coverage (JaCoCo) and cyclomatic complexity per method | Coverage ≥ 70 %; complexity ≤ 10 per method | Efe |
 
 ### 2.1 Performance
@@ -170,9 +166,16 @@ thresholds: {
 
 The PA-2 endpoints are stubs, so no scan result or security compliance is claimed at this stage.
 
-### 2.3 Usability
+### 2.3 Usability 
 
-<!-- TODO: Taha -->
+**Related requirement:** NFR-06 (intuitive user experience, clear feedback, accessible forms).
+
+- **Moderated User Testing Sessions:** Conducted with at least 10 students performing representative tasks (registering an account, publishing a lost item post, searching the feed, initiating an anonymous conversation).
+- **Success Metrics:**
+  - **Task Completion Rate:** ≥ 90 % of participants complete each core flow without moderator assistance.
+  - **Time on Task:** Core flows (e.g., creating a post or sending a message) completed in under 3 minutes.
+  - **User Satisfaction Survey:** Post-test questionnaire measuring perceived ease of use; target average score ≥ 80 % positive responses.
+- **Accessibility Verification (NFR-07):** Lighthouse Accessibility audit score ≥ 90, combined with manual keyboard-only navigation (`Tab` / `Shift+Tab`) and screen-reader compatibility checks across viewports (`360 px – 1920 px`).
 
 ### 2.4 Maintainability
 
@@ -282,9 +285,17 @@ Every test case uses the following fields:
 | **Type** | Auto — Spring Boot Test + MockMvc against PostgreSQL (Testcontainers, needed for the row lock) when T3.9/T3.10 are implemented. Concurrency variant, run separately on a fresh post with 3 reports: two new students report at the same moment → exactly one HIDDEN transition, 5 report rows, no 500 error. The API steps are repeated in Postman; the step-2 message in the report dialog is checked with React Testing Library. Not an implemented PA-2 test: stubs return 501. |
 | **Owner** | Furkan Yılmaz |
 
-#### TC-06
 
-<!-- TODO: owner to be assigned -->
+#### TC-06: Case-Insensitive Keyword Search and Empty State Feedback (FR-15, NFR-06)
+
+- **Objective:** Verify that `GET /api/posts` correctly filters active posts by case-insensitive keyword substring matching across title and description, and returns an empty page content (`[]`) when no matches are found, enabling the SPA to render `"No posts found"`.
+- **Prerequisites:** Seeded database containing posts with titles/descriptions such as `"Lost blue umbrella"` and `"Textbook for borrow"`.
+- **Test Steps:**
+  1. Send `GET /api/posts?keyword=BLUE` (uppercase query). Verify that post 42 (`"Lost blue umbrella"`) is returned in the content array (`200 OK`).
+  2. Send `GET /api/posts?keyword=umbrella`. Verify post 42 is returned (`200 OK`).
+  3. Send `GET /api/posts?keyword=nonexistentkeyword12345`. Verify response status is `200 OK` with an empty content array (`[]`), allowing the frontend to display the `"No posts found"` message.
+- **Expected Result:** Case-insensitive substring matching succeeds for both mixed and uppercase queries; unmatched queries yield an empty page without server errors.
+- **Owner:** Muhammed Taha Kaya
 
 ### 3.2 Bug Tracking
 
@@ -337,11 +348,11 @@ R = Responsible (wrote the section), C = Contributed / reviewed.
 | Section / task | Furkan Yılmaz | Efe Deniz Kahvecioğlu | Enis Talha Öztepe | Muhammed Taha Kaya |
 |---|:-:|:-:|:-:|:-:|
 | Document skeleton and structure | | R | C | |
-| Contributors list and Table of Contents | | | | |
+| Contributors list and Table of Contents | | | | R |
 | 1 QA Strategy (overview, methodologies, automated vs. manual, CI) | | R | C | |
 | 2.1 Performance | | | R | |
 | 2.2 Security | R | | | |
-| 2.3 Usability | | | | |
+| 2.3 Usability | | | | R |
 | 2.4 Maintainability | | R | | |
 | 3.1 Test case template | | R | C | |
 | TC-01 | R | | | |
@@ -349,5 +360,5 @@ R = Responsible (wrote the section), C = Contributed / reviewed.
 | TC-03 | | | R | |
 | TC-04 | | R | | |
 | TC-05 | R | | | |
-| TC-06 | | | | |
+| TC-06 | | | | R |
 | 3.2 Bug Tracking (+ issue template) | | R | | |

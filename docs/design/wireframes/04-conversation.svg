@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 360" font-family="system-ui, sans-serif" font-size="12" fill="#0f172a">
+  <rect width="860" height="360" fill="#f8fafc" />
+  <rect x="16" y="16" width="560" height="328" rx="6" fill="#ffffff" stroke="#475569" stroke-width="2" />
+  <text x="32" y="42" font-weight="bold" font-size="14">Desktop (1280px+) — Anonymous Conversations (UC3: FR-19..FR-21, NFR-04)</text>
+  <line x1="16" y1="54" x2="576" y2="54" stroke="#cbd5e1" />
+  <rect x="30" y="68" width="175" height="260" rx="6" fill="#f8fafc" stroke="#94a3b8" />
+  <text x="42" y="90" font-weight="bold">Inbox (/conversations)</text>
+  <rect x="40" y="102" width="155" height="58" rx="4" fill="#ffffff" stroke="#475569" />
+  <text x="48" y="120" font-weight="bold" font-size="11">BlueOwl482 [1 unread]</text>
+  <text x="48" y="138" fill="#475569" font-size="11">Lost blue umbrella</text>
+  <rect x="40" y="168" width="155" height="54" rx="4" fill="#ffffff" stroke="#cbd5e1" />
+  <text x="48" y="186" font-weight="bold" font-size="11">CampusFox219</text>
+  <text x="48" y="204" fill="#475569" font-size="11">SE Textbook Borrow</text>
+  <rect x="218" y="68" width="344" height="260" rx="6" fill="#ffffff" stroke="#475569" />
+  <text x="232" y="90" font-weight="bold">Thread #7 with BlueOwl482 (No e-mail shown)</text>
+  <text x="232" y="108" fill="#475569" font-size="11">Post: Lost blue umbrella (AES-256-GCM at rest)</text>
+  <line x1="218" y1="118" x2="562" y2="118" stroke="#e2e8f0" />
+  <rect x="232" y="130" width="250" height="44" rx="6" fill="#e2e8f0" />
+  <text x="242" y="148" font-weight="bold" font-size="11">GreenFox107 (Me) · 10:15</text>
+  <text x="242" y="165" font-size="11">Hi, I found your umbrella in the library.</text>
+  <rect x="296" y="184" width="250" height="44" rx="6" fill="#f1f5f9" stroke="#cbd5e1" />
+  <text x="306" y="202" font-weight="bold" font-size="11">BlueOwl482 · 10:18</text>
+  <text x="306" y="219" font-size="11">Thank you! Can we meet at the entrance?</text>
+  <rect x="232" y="284" width="248" height="30" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="240" y="303" fill="#64748b" font-size="11">Write message (1-1,000 chars)...</text>
+  <rect x="488" y="284" width="60" height="30" rx="4" fill="#cbd5e1" stroke="#475569" />
+  <text x="504" y="303" font-weight="bold">Send</text>
+  <rect x="604" y="16" width="240" height="328" rx="14" fill="#ffffff" stroke="#475569" stroke-width="2" />
+  <text x="622" y="42" font-weight="bold" font-size="13">Mobile (360px) — Thread</text>
+  <line x1="604" y1="54" x2="844" y2="54" stroke="#cbd5e1" />
+  <text x="620" y="76" font-weight="bold" font-size="11">< Back · BlueOwl482</text>
+  <text x="620" y="92" fill="#475569" font-size="10">Re: Lost blue umbrella</text>
+  <rect x="620" y="108" width="180" height="44" rx="6" fill="#e2e8f0" />
+  <text x="628" y="126" font-weight="bold" font-size="10">GreenFox107</text>
+  <text x="628" y="142" font-size="11">Found it near library!</text>
+  <rect x="646" y="162" width="180" height="44" rx="6" fill="#f1f5f9" stroke="#cbd5e1" />
+  <text x="654" y="180" font-weight="bold" font-size="10">BlueOwl482</text>
+  <text x="654" y="196" font-size="11">Let's meet at 14:00.</text>
+  <rect x="620" y="296" width="146" height="28" rx="4" fill="#ffffff" stroke="#64748b" />
+  <text x="628" y="314" fill="#64748b" font-size="11">Message...</text>
+  <rect x="772" y="296" width="54" height="28" rx="4" fill="#cbd5e1" stroke="#475569" />
+  <text x="785" y="314" font-weight="bold">Send</text>
+</svg>
