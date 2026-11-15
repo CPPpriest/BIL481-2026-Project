@@ -99,14 +99,44 @@ Roles: Efe (QA / Test Lead) owns this plan, unit/integration tests and the test 
 
 | Quality factor | Description | Measurement metric | Target | Owner |
 |---|---|---|---|---|
-| Performance | <!-- TODO: Enis --> | | | Enis |
+| Performance | Feed/search responsiveness under representative campus load | p95 HTTP response time per feed and search scenario, with 50 concurrent users and seeded data | p95 < 2,000 ms for each scenario; support 5,000 users / 20,000 posts | Enis |
 | Security | <!-- TODO: Furkan --> | | | Furkan |
 | Usability | <!-- TODO: Taha --> | | | Taha |
 | Maintainability | Ease of understanding, changing and testing the codebase | Service-layer line coverage (JaCoCo) and cyclomatic complexity per method | Coverage ≥ 70 %; complexity ≤ 10 per method | Efe |
 
 ### 2.1 Performance
 
-<!-- TODO: Enis -->
+**Related requirements:** NFR-05 (95% of feed/search responses under 2 seconds with 50 concurrent users), NFR-11 (5,000 registered users and 20,000 posts at that latency). Owner: Enis Talha Öztepe.
+
+| Metric | Target / measurement | Tool |
+|---|---|---|
+| Feed response latency | `p(95) < 2000` ms for `GET /api/posts?page=...`, measured separately from search | k6 `http_req_duration` tagged `operation:feed` |
+| Search response latency | `p(95) < 2000` ms for keyword and combined-filter requests, measured separately from feed | k6 `http_req_duration` tagged `operation:search` |
+| Concurrent workload | 50 active, verified, authenticated users at steady load | k6 constant 50 VUs; not 50 requests total |
+| Data volume | At least 5,000 registered users and 20,000 realistic posts, with related image/conversation/report metadata | Seeded PostgreSQL fixture; row counts recorded before run |
+| Correct responses | Expected HTTP 200, correct status/filter matches, ≤ 20 records per page; unauthorized/errors cannot count as fast successes | k6 `check`, `checks: rate==1`, `http_req_failed: rate==0` on this controlled workload |
+
+**Repeatable procedure (planned for T4.4):**
+
+1. Deploy the implemented API against PostgreSQL with the same schema/indexes and resource limits as the test environment. Record commit SHA, server/DB versions, CPU/RAM, hosting tier, location and whether TLS is used. Run k6 on a separate machine; include authentication and network cost in observed API timing, not UI rendering.
+2. Seed 5,000 users and 20,000 posts with mixed categories/subtypes, ACTIVE/RESOLVED/HIDDEN/ARCHIVED states and varied creation dates. Record distribution and row counts. Use common, rare and absent keywords; include punctuation as literal substring input. The default feed must never contain hidden/archived/resolved records.
+3. Prepare 50 valid test sessions for verified active accounts (one per VU), outside the timed workload. Do not place session secrets in Git or published reports. Avoid session expiry during the measurement; it is tested separately.
+4. Warm up for 1 minute. Then run a mixed feed/search workload for 5 minutes at constant 50 VUs with a short, fixed think time (1 second) between requests. Alternate feed pages (including a later page) and searches with keyword-only, category/subtype, date/status and combined filters. Tag each request as feed/search so one cannot mask the other. Run 3 times with unchanged fixtures/configuration.
+5. Check correctness and `p(95) < 2000` separately for both endpoint tags in every steady-state run. Record counts, p50/p95/max, throughput, failed requests and assertion failures. Report any slow query or resource saturation and rerun after a recorded fix. Warm-up data is excluded from the acceptance summary.
+6. Save the k6 script, seed description, environment manifest and machine-readable result summary with the test report. Capture no personal e-mail or credentials. If a free-tier instance sleeps, report the cold-start result separately and describe preconditioning; do not silently mix it into or remove it from the steady-state sample.
+
+Example threshold configuration for the future load script:
+
+```javascript
+thresholds: {
+  'http_req_duration{operation:feed}': ['p(95)<2000'],
+  'http_req_duration{operation:search}': ['p(95)<2000'],
+  http_req_failed: ['rate==0'],
+  checks: ['rate==1'],
+}
+```
+
+**Acceptance:** every measured run meets both p95 thresholds and all correctness checks with the required concurrency/data volume. These are API performance tests; browser page-loading and rendering can be observed separately. The PA-2 endpoints are stubs, so no load result or performance compliance is claimed at this stage.
 
 ### 2.2 Security
 
@@ -162,9 +192,19 @@ Every test case uses the following fields:
 
 <!-- TODO: owner to be assigned -->
 
-#### TC-03
+#### TC-03 — Reject edits and deletion by another student
 
-<!-- TODO: owner to be assigned -->
+| Field | Value |
+|---|---|
+| **ID** | TC-03 |
+| **Title** | A non-author cannot edit or delete another student's post |
+| **Related UC / FR** | UC2 · FR-11; NFR-03 (access control) |
+| **Preconditions** | Two distinct verified, active students A (alias `BlueOwl482`) and B (alias `GreenFox107`) have valid independent sessions. A owns ACTIVE post P=42 with one image and a related conversation/message. B is not an administrator. Record a DB snapshot of the post, image metadata, related conversation/messages, reports and their timestamps. |
+| **Steps** | 1. As B, send `PUT /api/posts/42` with a valid multipart JSON `post` part and optional replacement JPEG. 2. Assert 403 and inspect the DB against the snapshot, including author/status/text/timestamps and image reference; verify no new stored image remains. 3. As B, send `DELETE /api/posts/42` and assert 403. 4. Compare DB and image storage against the same snapshot; confirm post and dependent records/files still exist and are unchanged. 5. As A, call `GET /api/posts/42` to verify the original detail remains visible. |
+| **Test Data** | Original: category `LOST_FOUND`, subtype `LOST`, title `Lost blue umbrella`, description `Left near the library entrance.`, location `Library`, status `ACTIVE`. Attempted replacement: same valid category/subtype, title `Changed by another student`, description `Unauthorized edit attempt.`, location `Cafeteria`, valid JPEG below 5 MB. Use B's session with a valid CSRF token if session security requires it, so rejection tests ownership rather than malformed input or CSRF. |
+| **Expected Result** | Both B requests return **HTTP 403 Forbidden** for the existing post. After each attempt, the original row, ownership, state, text, timestamps, image and related data remain unchanged; no image is replaced/deleted or orphaned. A's final detail read returns 200 and original content with only A's display alias. |
+| **Type** | Auto — Spring Boot Test + MockMvc with real authentication and PostgreSQL fixture (Testcontainers) when T3.1/T3.2 are implemented; repeat endpoint assertions in Postman. Service-level test separately verifies rejection before any repository mutation or storage write. Not an implemented PA-2 test: stubs currently return 501. |
+| **Owner** | Enis Talha Öztepe |
 
 #### TC-04 — No e-mail address in conversation and message API responses
 
@@ -238,17 +278,17 @@ R = Responsible (wrote the section), C = Contributed / reviewed.
 
 | Section / task | Furkan Yılmaz | Efe Deniz Kahvecioğlu | Enis Talha Öztepe | Muhammed Taha Kaya |
 |---|:-:|:-:|:-:|:-:|
-| Document skeleton and structure | | R | | |
+| Document skeleton and structure | | R | C | |
 | Contributors list and Table of Contents | | | | |
-| 1 QA Strategy (overview, methodologies, automated vs. manual, CI) | | R | | |
-| 2.1 Performance | | | | |
+| 1 QA Strategy (overview, methodologies, automated vs. manual, CI) | | R | C | |
+| 2.1 Performance | | | R | |
 | 2.2 Security | | | | |
 | 2.3 Usability | | | | |
 | 2.4 Maintainability | | R | | |
-| 3.1 Test case template | | R | | |
+| 3.1 Test case template | | R | C | |
 | TC-01 | | | | |
 | TC-02 | | | | |
-| TC-03 | | | | |
+| TC-03 | | | R | |
 | TC-04 | | R | | |
 | TC-05 | | | | |
 | TC-06 | | | | |
