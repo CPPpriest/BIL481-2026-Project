@@ -100,7 +100,7 @@ Roles: Efe (QA / Test Lead) owns this plan, unit/integration tests and the test 
 | Quality factor | Description | Measurement metric | Target | Owner |
 |---|---|---|---|---|
 | Performance | Feed/search responsiveness under representative campus load | p95 HTTP response time per feed and search scenario, with 50 concurrent users and seeded data | p95 < 2,000 ms for each scenario; support 5,000 users / 20,000 posts | Enis |
-| Security | <!-- TODO: Furkan --> | | | Furkan |
+| Security | Resistance to the OWASP Top 10 risks relevant to UniHelp (XSS, injection, broken authentication/access control) | (S1) number of **High**-risk alerts in the OWASP ZAP baseline scan; (S2) number of **open critical/high security bugs** | S1 = 0 and S2 = 0 before release (NFR-03) | Furkan |
 | Usability | <!-- TODO: Taha --> | | | Taha |
 | Maintainability | Ease of understanding, changing and testing the codebase | Service-layer line coverage (JaCoCo) and cyclomatic complexity per method | Coverage ≥ 70 %; complexity ≤ 10 per method | Efe |
 
@@ -140,7 +140,35 @@ thresholds: {
 
 ### 2.2 Security
 
-<!-- TODO: Furkan -->
+**Related requirements:** NFR-03 (protection against the relevant OWASP Top 10 risks; ZAP baseline with no high-risk alerts before release), supported by NFR-01, NFR-02, NFR-04, FR-01–FR-05, FR-11, FR-13 and FR-25–FR-28. Owner: Furkan Yılmaz (Project Plan T4.3).
+
+| Metric | Definition | Target | Tool / how measured | When |
+|---|---|---|---|---|
+| S1 — ZAP high-risk alerts | Number of distinct alerts with risk **High** (`riskcode = 3`) in the OWASP ZAP baseline report of the release candidate | **0** | OWASP ZAP baseline scan (`zap-baseline.py`, official ZAP Docker image) against the HTTPS staging deployment; count read from the JSON report | End of every sprint from Sprint 1 (after T3.1), and as the release gate before M6 |
+| S2 — Open critical/high security bugs | Number of open GitHub Issues with labels `bug` + `security` + (`severity:critical` or `severity:high`) | **0** | GitHub Issues query `is:issue is:open label:security label:"severity:critical"` and the same for `severity:high` (§3.2) | Weekly meeting; release gate before M6 |
+
+**Procedure for S1:**
+
+1. Deploy the release candidate to the staging environment over HTTPS, with seeded test accounts and data only (no real student data). Record commit SHA, ZAP version and target URL.
+2. Run the baseline scan against the SPA and API base URLs: `zap-baseline.py -t <staging-url> -J zap-report.json -r zap-report.html`. The baseline scan spiders the site and applies passive rules; it does not attack the server.
+3. Count alerts with `riskcode = 3`. Every High alert opens a `severity:high` (or `severity:critical`) issue with the `security` label. Medium alerts are also opened as issues and triaged; they do not block the release by themselves.
+4. A High alert may be closed as a false positive only with a written reason in the issue, reviewed by a second team member. The ZAP rule is then marked as ignored in the committed rules file. False positives are never removed from the report silently.
+5. Re-run the scan after fixes. S1 is met when the latest scan of the release candidate has 0 High alerts. Store both reports with the test report.
+
+**Rule for S2:** every bug that breaks authentication, access control, e-mail privacy, encryption at rest or input sanitization gets the `security` label. Its severity follows §3.2; for example, an e-mail address in an API response is critical. The fix must include a regression test (§3.2 rules). S2 is counted with the GitHub query above; the release needs S2 = 0.
+
+**Supporting security tests** (not metrics, but they find problems the passive scan cannot see):
+
+| Check | Test | Requirement |
+|---|---|---|
+| Campus-only registration | TC-01 | FR-01 |
+| Brute-force protection | TC-02 | FR-05 |
+| Access control on other users' posts | TC-03 | FR-11, NFR-03 |
+| No e-mail in responses | TC-04, `AuthDtoPrivacyTest` | FR-20, NFR-04 |
+| Report abuse limits and moderation | TC-05 | FR-25, FR-26 |
+| XSS / SQL injection payloads in post, report and message text; HTTP → HTTPS redirect and TLS ≥ 1.2; BCrypt hashes and message ciphertext in the database | Manual security session with Postman and database inspection (T4.3) | FR-13, NFR-01, NFR-02, NFR-03 |
+
+The PA-2 endpoints are stubs, so no scan result or security compliance is claimed at this stage.
 
 ### 2.3 Usability
 
@@ -184,13 +212,33 @@ Every test case uses the following fields:
 | **Type** | Auto (JUnit / Spring Boot Test / Postman / k6 / ZAP / Lighthouse) or Manual |
 | **Owner** | Team member responsible for writing and running it |
 
-#### TC-01
+#### TC-01 — Reject registration with a non-university e-mail address
 
-<!-- TODO: owner to be assigned -->
+| Field | Value |
+|---|---|
+| **ID** | TC-01 |
+| **Title** | Registration with `@gmail.com` is rejected with the FR-01 message and creates no user record |
+| **Related UC / FR** | UC1 · FR-01; NFR-03, NFR-04 |
+| **Preconditions** | 1. `allowed_domains` contains only `etu.edu.tr`. 2. No user exists with any of the test e-mail addresses. 3. The mail sender is a mock that records calls. 4. Record the row counts of `users` and `verification_tokens`. |
+| **Steps** | 1. Send `POST /api/auth/register` with the main test data. 2. Check the status code and the response body. 3. Query `users` for `ali.test@gmail.com` and compare both row counts with step 4 of the preconditions. 4. Check that the mail sender mock was not called. 5. Repeat steps 1–4 for each variant e-mail. 6. Positive control: register `tc01.student@etu.edu.tr` with the same password and check that it returns 201 and creates one PENDING user, so the rejection in steps 1–5 is caused by the domain only. 7. In the SPA, submit the register form with `ali.test@gmail.com` and check the message shown. |
+| **Test Data** | Main: `{ "email": "ali.test@gmail.com", "password": "Secret123" }` (valid password, so only the domain is wrong). Variants: `Ali.Test@GMAIL.com`, `x@etu.edu.tr.gmail.com`, `x@mail.etu.edu.tr`, `x@gmail.com@etu.edu.tr` (invalid format → 400 from validation). Positive control: `tc01.student@etu.edu.tr` / `Secret123`. |
+| **Expected Result** | 1. Every rejected request returns **HTTP 400** with the message **"A verified university e-mail address is required"** (the invalid-format variant may return the validation message instead). 2. No row with the test e-mail exists; the `users` and `verification_tokens` counts are unchanged after each rejected request. 3. No verification e-mail is sent. 4. The positive control returns 201 and creates exactly one PENDING user. 5. The SPA shows "A verified university e-mail address is required" at the e-mail field and stays on the register page. |
+| **Type** | Auto — Spring Boot Test + MockMvc (H2, mocked mail sender) for steps 1–6; the same API assertions in the Postman collection; React Testing Library for step 7. Becomes executable with T3.1; the PA-2 stub returns 501. |
+| **Owner** | Furkan Yılmaz |
 
-#### TC-02
+#### TC-02 — Lock the account for 15 minutes after 5 failed logins
 
-<!-- TODO: owner to be assigned -->
+| Field | Value |
+|---|---|
+| **ID** | TC-02 |
+| **Title** | After 5 consecutive failed logins the account is locked for 15 minutes, even for the correct password |
+| **Related UC / FR** | UC1 · FR-05; NFR-03 (broken authentication) |
+| **Preconditions** | 1. ACTIVE student `tc02.student@etu.edu.tr`, password `Secret123`, `failedAttempts = 0`, `lockedUntil = null`. 2. The application uses an injectable clock fixed at `2026-12-01T10:00:00Z` that the test can move forward. 3. No session exists for this user. |
+| **Steps** | 1. Send `POST /api/auth/login` with the wrong password 4 times. 2. Send it with the wrong password a 5th time. 3. Immediately log in with the **correct** password. 4. Move the clock to 10:14:59 and log in with the correct password. 5. Move the clock to 10:15:00 and log in with the correct password. 6. Consecutive-count check: 4 wrong, 1 correct, then 4 wrong attempts. |
+| **Test Data** | E-mail `tc02.student@etu.edu.tr`; wrong password `Wrong1234`; correct password `Secret123`; lock start 10:00:00Z, expected `lockedUntil` 10:15:00Z. |
+| **Expected Result** | 1. Attempts 1–4 return **401** "Invalid e-mail or password"; `failedAttempts` is 1, 2, 3, 4; status stays ACTIVE. 2. Attempt 5 returns **423**; status LOCKED, `lockedUntil = 10:15:00Z`. 3. The correct password returns **423** and no session cookie. 4. At 10:14:59 still **423**. 5. At 10:15:00 **200** with the user's `AccountDto` and a session cookie; status ACTIVE, `failedAttempts = 0`, `lockedUntil = null`. 6. The account is not locked, because the correct login reset the counter; `failedAttempts = 4`. No response contains the password or its hash. |
+| **Type** | Auto — Spring Boot Test + MockMvc with the injected clock (no real waiting), plus an `AuthService` unit test with Mockito for the counter rules; the API steps in Postman without step 4–5 timing. Becomes executable with T3.1. |
+| **Owner** | Furkan Yılmaz |
 
 #### TC-03 — Reject edits and deletion by another student
 
@@ -220,9 +268,19 @@ Every test case uses the following fields:
 | **Type** | Auto — (a) unit: `MessageDtoPrivacyTest` checks that no response DTO has an e-mail field (already in CI); (b) integration: Spring Boot Test + MockMvc scenario above (Sprint 2); (c) API: same checks as assertions in the Postman collection |
 | **Owner** | Efe Deniz Kahvecioğlu |
 
-#### TC-05
+#### TC-05 — Hide a post after more than 3 unique reports and reject a duplicate report
 
-<!-- TODO: owner to be assigned -->
+| Field | Value |
+|---|---|
+| **ID** | TC-05 |
+| **Title** | The 4th unique report hides the post, removes it from feed/search and raises an admin alert; a second report by the same student is rejected |
+| **Related UC / FR** | UC4 · FR-25, FR-26; NFR-04 |
+| **Preconditions** | 1. Verified, active student A (alias `BlueOwl482`) owns ACTIVE post P = 42, title `Lost blue umbrella`, with no reports. 2. Five other verified, active students R1–R5 and one administrator ADM have their own valid sessions and CSRF tokens. 3. R5 is used only to read the feed. |
+| **Steps** | 1. R1, R2 and R3 each send `POST /api/posts/42/reports`. After each request, check the status of P in the database, and as R5 call `GET /api/posts` and `GET /api/posts?keyword=umbrella`. 2. R1 sends a second report for P. 3. Count the report rows of P in the database. 4. ADM calls `GET /api/admin/reports`. 5. R4 sends a report for P. 6. Check the status of P in the database. 7. As R5, call `GET /api/posts`, `GET /api/posts?keyword=umbrella` and `GET /api/posts/42`. 8. ADM calls `GET /api/admin/reports` again. |
+| **Test Data** | R1: `FRAUD`, comment `Asks for a deposit before returning the item.` · R2: `SPAM` · R3: `OFFENSIVE_CONTENT` · R4: `OTHER`, comment `Same text posted many times.` · R1 duplicate: `SPAM`. |
+| **Expected Result** | 1. Each of the first three reports returns **201**; P stays ACTIVE and appears in both feed and keyword search, so 3 reports do **not** hide the post. 2. The duplicate returns **409** with **"You have already reported this post."** 3. P has exactly 3 report rows. 4. P is listed with `openReportCount = 3`, `alert = false`. 5. R4's report returns **201**; the response contains no report count or hidden flag. 6. P is **HIDDEN**. 7. Post 42 is absent from the feed and from the keyword search; the detail read returns **404**. 8. P is the first entry with `status = HIDDEN`, `alert = true`, `openReportCount = 4` and 4 reports listed by reporter alias. No JSON key contains `email` and no value matches the e-mail regex of TC-04. |
+| **Type** | Auto — Spring Boot Test + MockMvc against PostgreSQL (Testcontainers, needed for the row lock) when T3.9/T3.10 are implemented. Concurrency variant, run separately on a fresh post with 3 reports: two new students report at the same moment → exactly one HIDDEN transition, 5 report rows, no 500 error. The API steps are repeated in Postman; the step-2 message in the report dialog is checked with React Testing Library. Not an implemented PA-2 test: stubs return 501. |
+| **Owner** | Furkan Yılmaz |
 
 #### TC-06
 
@@ -282,14 +340,14 @@ R = Responsible (wrote the section), C = Contributed / reviewed.
 | Contributors list and Table of Contents | | | | |
 | 1 QA Strategy (overview, methodologies, automated vs. manual, CI) | | R | C | |
 | 2.1 Performance | | | R | |
-| 2.2 Security | | | | |
+| 2.2 Security | R | | | |
 | 2.3 Usability | | | | |
 | 2.4 Maintainability | | R | | |
 | 3.1 Test case template | | R | C | |
-| TC-01 | | | | |
-| TC-02 | | | | |
+| TC-01 | R | | | |
+| TC-02 | R | | | |
 | TC-03 | | | R | |
 | TC-04 | | R | | |
-| TC-05 | | | | |
+| TC-05 | R | | | |
 | TC-06 | | | | |
 | 3.2 Bug Tracking (+ issue template) | | R | | |
