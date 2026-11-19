@@ -1,0 +1,19 @@
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px var(--space-page) 48px;
+  outline: none;
+}
+
+.footer {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px var(--space-page) 32px;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.footer p {
+  margin: 0;
+}
