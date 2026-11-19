@@ -1,0 +1,22 @@
+EVIDENCE: FR-16 router evaluation — AFTER category-based fix
+EXECUTED_AT: 2026-11-19T20:31:05+0300
+GIT_SHA: 4a897d964d209e83bc21dd61e412681f88b3151d + uncommitted router change on feat/pa3-web (commit SHA to be recorded in the PR)
+EXECUTOR: Yunus Emre Biçer
+ENV: MINGW64_NT-10.0-26200 / Node v24.18.1 / vitest 5.1.0
+COMMAND: npx vitest run apps/web --reporter=verbose
+CHANGE: (1) Turkish keywords accept suffixes (\w*), (2) English plurals and 'bus'/'eat' added, (3) personal-timetable words (ders, sınav, class, lecture, course, exam) always route to the agent with reason PERSONAL_QUERY.
+LIMITATION: the fix was guided by the error categories of the held-out set, so that set is no longer unseen. The 20-query validation set was written before the fix but after the categories were known; its result is therefore optimistic. A third set written by another team member would be a stronger check.
+STATUS: PASS (held-out 40/40, compound 10/10; validation 20/20, compound 4/4; original 40-query benchmark unchanged and passing)
+
+[FR-16 held-out report]
+Corpus size: 40
+Accuracy: 100.0 % (40/40)
+Compound -> agent: 10/10
+Misrouted: none
+[FR-16 validation report]
+Corpus size: 20
+Accuracy: 100.0 % (20/20)
+Compound -> agent: 4/4
+Misrouted: none
+ Test Files  2 passed (2)
+      Tests  51 passed (51)
