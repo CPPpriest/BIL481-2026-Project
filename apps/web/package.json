@@ -3,24 +3,24 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Frontend routing logic for the Campus Data Orchestrator",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
+  "description": "Next.js web client (Campus at a Glance dashboard and conversational assistant) for the Campus Data Orchestrator",
   "scripts": {
-    "build": "tsc",
+    "dev": "next dev --port 3002",
+    "build": "next build",
+    "start": "next start --port 3002",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run --root ../.. apps/web/tests",
-    "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\""
+    "clean": "node -e \"for (const d of ['.next', 'dist']) fs.rmSync(d, { recursive: true, force: true })\""
   },
   "dependencies": {
-    "@campus-orchestrator/shared": "*"
+    "@campus-orchestrator/shared": "*",
+    "next": "16.4.6",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "typescript": "^5.4.5",
     "vitest": "^5.1.0"
   }

@@ -1,0 +1,55 @@
+EVIDENCE: FR-16 router held-out evaluation — BASELINE (before any router change)
+EXECUTED_AT: 2026-11-19T20:29:58+0300
+GIT_SHA: 4a897d964d209e83bc21dd61e412681f88b3151d (branch feat/pa3-web, router unchanged from origin/dev)
+EXECUTOR: Yunus Emre Biçer
+ENV: MINGW64_NT-10.0-26200 / Node v24.18.1 / vitest 5.1.0
+DATA_MODE: N/A (pure function, no network)
+COMMAND: npx vitest run apps/web/tests/routeStudentQuery.heldout.test.ts --reporter=verbose
+TARGET: accuracy >= 90 %, compound -> agent 100 %
+STATUS: FAIL (82.5 %, 7/10)
+
+[FR-16 held-out report]
+Held-out corpus size: 40
+Accuracy: 82.5 % (33/40)
+Compound -> agent: 7/10
+
+expected \ predicted | CAFETERIA | SHUTTLE | LIBRARY | AGENT
+CAFETERIA | 8 | 0 | 0 | 0
+SHUTTLE | 0 | 5 | 0 | 3
+LIBRARY | 0 | 0 | 7 | 1
+AGENT | 1 | 1 | 1 | 13
+
+Misrouted:
+  - [TR] "Yurt servisinin saatleri" expected SHUTTLE, got AGENT
+  - [EN] "When does the bus leave?" expected SHUTTLE, got AGENT
+  - [EN] "How many shuttles are running now?" expected SHUTTLE, got AGENT
+  - [TR] "Kütüphanede kaç kişi var?" expected LIBRARY, got AGENT
+  - [TR] "Dersim bitince ring var mı?" expected AGENT, got SHUTTLE
+  - [TR] "Ringle gidip yemeğe yetişir miyim" expected AGENT, got CAFETERIA
+  - [EN] "When my class ends can I find a library seat?" expected AGENT, got LIBRARY
+
+
+
+--- Validation corpus (20 fresh queries written before the fix), same unchanged router ---
+STATUS: FAIL (65.0 %, compound 3/4)
+[FR-16 validation report]
+Corpus size: 20
+Accuracy: 65.0 % (13/20)
+Compound -> agent: 3/4
+
+expected \ predicted | CAFETERIA | SHUTTLE | LIBRARY | AGENT
+CAFETERIA | 2 | 0 | 0 | 2
+SHUTTLE | 0 | 2 | 0 | 2
+LIBRARY | 0 | 0 | 2 | 2
+AGENT | 1 | 0 | 0 | 7
+
+Misrouted:
+  - [TR] "Öğlen ne yiyeceğiz" expected CAFETERIA, got AGENT
+  - [EN] "Show me the meals" expected CAFETERIA, got AGENT
+  - [TR] "Ringlerin saatini söyler misin" expected SHUTTLE, got AGENT
+  - [EN] "Upcoming buses on the dormitory line" expected SHUTTLE, got AGENT
+  - [TR] "Kütüphanenin ikinci katı dolu mu" expected LIBRARY, got AGENT
+  - [TR] "Kütüphanede oturacak yer var mı" expected LIBRARY, got AGENT
+  - [TR] "Dersten çıkınca yemekhaneye yetişir miyim?" expected AGENT, got CAFETERIA
+
+

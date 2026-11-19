@@ -1,0 +1,129 @@
+/*
+ * Design tokens for the Campus Data Orchestrator web client.
+ * Light theme by default; dark theme follows the operating system.
+ */
+:root {
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-surface-muted: #eef0f4;
+  --color-border: #d9dde5;
+  --color-text: #1b1f27;
+  --color-text-muted: #5a6272;
+  --color-accent: #1f4fa8;
+  --color-accent-strong: #163b80;
+  --color-accent-contrast: #ffffff;
+  --color-focus: #2f6fe0;
+  --color-info-bg: #e7efff;
+  --color-info-text: #173d84;
+  --color-warning-bg: #fff4d6;
+  --color-warning-text: #7a5300;
+  --color-success-bg: #e3f5ea;
+  --color-success-text: #19633a;
+  --color-danger-bg: #fde8e8;
+  --color-danger-text: #9b1c1c;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+  --space-page: 16px;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #11141a;
+    --color-surface: #1a1f28;
+    --color-surface-muted: #232a35;
+    --color-border: #313a48;
+    --color-text: #e8ebf0;
+    --color-text-muted: #a3acbb;
+    --color-accent: #7aa5ff;
+    --color-accent-strong: #a3c1ff;
+    --color-accent-contrast: #0d1424;
+    --color-focus: #8fb3ff;
+    --color-info-bg: #1c2b4a;
+    --color-info-text: #c3d6ff;
+    --color-warning-bg: #3a2f12;
+    --color-warning-text: #f3d589;
+    --color-success-bg: #163222;
+    --color-success-text: #9fdcb6;
+    --color-danger-bg: #3d1a1a;
+    --color-danger-text: #f5b0b0;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+    color-scheme: dark;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --space-page: 32px;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--color-accent);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  padding: 8px 12px;
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  border-radius: var(--radius-sm);
+  z-index: 10;
+}
+
+.skip-link:focus {
+  top: 8px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

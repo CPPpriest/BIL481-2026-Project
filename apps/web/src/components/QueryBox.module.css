@@ -1,0 +1,107 @@
+.box {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-weight: 600;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.button {
+  flex: 0 0 auto;
+  padding: 10px 20px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-accent-contrast);
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--color-accent-strong);
+}
+
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.example {
+  max-width: 100%;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  color: var(--color-text-muted);
+  background: var(--color-surface-muted);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.example:hover {
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.decisionRegion:not(:empty) {
+  margin-top: 12px;
+}
+
+.decision {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+}
+
+.direct {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.agent {
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
+}
+
+.agent a {
+  color: inherit;
+  font-weight: 600;
+}
+
+.neutral {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}

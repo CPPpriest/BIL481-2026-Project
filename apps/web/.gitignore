@@ -1,0 +1,4 @@
+# Next.js build output and generated type file
+.next/
+out/
+next-env.d.ts

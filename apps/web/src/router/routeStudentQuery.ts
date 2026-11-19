@@ -12,6 +12,7 @@ export type DirectToolName =
 export type AgentRoutingReason =
   | 'EMPTY_QUERY'
   | 'COMPOUND_QUERY'
+  | 'PERSONAL_QUERY'
   | 'AMBIGUOUS_QUERY'
   | 'UNMATCHED_QUERY';
 
@@ -39,29 +40,42 @@ interface IntentDefinition {
 const COMPOUND_QUERY_PATTERN =
   /(?:,|\b(?:and|then|after|before|with|ve|ile|sonra|once|ardindan)\b)/i;
 
+/**
+ * Words that point to the student's personal timetable (FR-06). Such data is
+ * only available to an authenticated student through the agent, so a query
+ * containing them never takes the direct widget path, even if it also names
+ * a cafeteria, shuttle or library keyword ("Dersim bitince ring var mı?").
+ */
+const PERSONAL_QUERY_PATTERN =
+  /\b(?:ders\w*|sinav\w*|laboratuvar\w*|class(?:es)?|lectures?|courses?|exams?)\b/i;
+
+/*
+ * Turkish keywords end in \w* so that suffixed forms match as well
+ * ("servisinin", "kütüphanede", "ringle", "metroya").
+ */
 const INTENT_DEFINITIONS: readonly IntentDefinition[] = [
   {
     intent: 'CAFETERIA',
     toolName: TOOL_NAMES.CAFETERIA_MENU,
     patterns: [
-      /\b(?:cafeteria|menu|lunch|dinner|meal|food)\b/i,
-      /\b(?:yemek\w*|yemeg\w*|menu\w*|ogle yemeg\w*|aksam yemeg\w*|kafeterya)\b/i,
+      /\b(?:cafeteria|menus?|lunch|dinner|meals?|food|eat)\b/i,
+      /\b(?:yemek\w*|yemeg\w*|menu\w*|kafeterya\w*|yiy\w*)\b/i,
     ],
   },
   {
     intent: 'SHUTTLE',
     toolName: TOOL_NAMES.SHUTTLE_SCHEDULE,
     patterns: [
-      /\b(?:shuttle|ring|campus bus|bus departure|departure|metro shuttle)\b/i,
-      /\b(?:ring|servis|kampus otobusu|otobus|kalkis|metro)\b/i,
+      /\b(?:shuttles?|rings?|bus(?:es)?|departures?)\b/i,
+      /\b(?:ring\w*|servis\w*|otobus\w*|kalkis\w*|kalkiyor|kalkar|metro\w*)\b/i,
     ],
   },
   {
     intent: 'LIBRARY',
     toolName: TOOL_NAMES.LIBRARY_OCCUPANCY,
     patterns: [
-      /\b(?:library|library occupancy|study space|empty seats?|available seats?)\b/i,
-      /\b(?:kutuphane|doluluk|calisma alani|bos yer|bos koltuk)\b/i,
+      /\b(?:library|study space|empty seats?|available seats?)\b/i,
+      /\b(?:kutuphane\w*|doluluk\w*|calisma alan\w*|bos yer|bos koltuk)\b/i,
     ],
   },
 ] as const;
@@ -103,6 +117,14 @@ export function routeStudentQuery(query: string): StudentQueryRoute {
     return {
       route: 'LLM_AGENT',
       reason: 'COMPOUND_QUERY',
+      normalizedQuery,
+    };
+  }
+
+  if (PERSONAL_QUERY_PATTERN.test(normalizedQuery)) {
+    return {
+      route: 'LLM_AGENT',
+      reason: 'PERSONAL_QUERY',
       normalizedQuery,
     };
   }
