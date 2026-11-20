@@ -1,17 +1,35 @@
-import fastify, { FastifyInstance } from 'fastify';
+import fastify, { type FastifyInstance } from 'fastify';
 import { authenticateAndTerminateToken } from './auth/tokenTermination.js';
 import { signMockToken } from './auth/jwtVerifier.js';
-import { createRateLimiterMiddleware, RateLimiterStore, defaultRateLimiterStore } from './rate-limiter/slidingWindowRateLimiter.js';
+import { sendGatewayError } from './http/errorResponse.js';
+import { handleChatStream } from './proxy/chatStreamProxy.js';
+import { forwardToolQuery } from './proxy/mcpProxy.js';
+import {
+  createRateLimiterMiddleware,
+  defaultRateLimiterStore,
+  type RateLimiterStore,
+} from './rate-limiter/slidingWindowRateLimiter.js';
 import type { UserRole } from './types/auth.js';
 
 export interface BuildGatewayOptions {
   rateLimiterStore?: RateLimiterStore;
   rateLimit?: number;
   rateLimitWindow?: number;
+  mcpUrl?: string;
+  agentStreamUrl?: string;
+  mcpTimeoutMs?: number;
+  chatTimeoutMs?: number;
+  fetchImpl?: typeof fetch;
+}
+
+const VALID_LOGIN_ROLES: readonly UserRole[] = ['STUDENT', 'FACULTY', 'GUEST', 'ADMIN'];
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /**
- * Builds and configures the Fastify API Gateway Server (FR-07, FR-08)
+ * Builds and configures the Fastify API Gateway Server (FR-07, FR-08, API Contract v1.1)
  */
 export function buildGateway(options: BuildGatewayOptions = {}): FastifyInstance {
   const app = fastify({
@@ -21,12 +39,41 @@ export function buildGateway(options: BuildGatewayOptions = {}): FastifyInstance
   const rateLimitStore = options.rateLimiterStore || defaultRateLimiterStore;
   const rateLimit = options.rateLimit ?? 30;
   const rateLimitWindow = options.rateLimitWindow ?? 60;
+  const mcpUrl = options.mcpUrl || process.env.MCP_URL || 'http://localhost:3001/mcp';
+  const agentStreamUrl =
+    options.agentStreamUrl ||
+    process.env.AGENT_STREAM_URL ||
+    'http://localhost:3001/internal/agent/stream';
+  const mcpTimeoutMs = options.mcpTimeoutMs ?? 10_000;
+  const chatTimeoutMs = options.chatTimeoutMs ?? 20_000;
+  const fetchImpl = options.fetchImpl ?? fetch;
+
+  app.setErrorHandler((err, _request, reply) => {
+    const statusCode = (err as { statusCode?: unknown }).statusCode;
+    const code = (err as { code?: unknown }).code;
+    if (
+      statusCode === 400 ||
+      err instanceof SyntaxError ||
+      (typeof code === 'string' && code.startsWith('FST_ERR_CTP_'))
+    ) {
+      return sendGatewayError(
+        reply,
+        400,
+        'INVALID_PARAMS',
+        'Malformed JSON request body or invalid parameters.'
+      );
+    }
+    return sendGatewayError(reply, 500, 'INTERNAL_ERROR', 'Internal gateway error.');
+  });
 
   // Global preHandler: Perimeter Token Termination and Authentication (FR-07)
   app.addHook('preHandler', authenticateAndTerminateToken);
 
   // Global preHandler: Tiered Rate Limiting (FR-08)
-  app.addHook('preHandler', createRateLimiterMiddleware(rateLimit, rateLimitWindow, rateLimitStore));
+  app.addHook(
+    'preHandler',
+    createRateLimiterMiddleware(rateLimit, rateLimitWindow, rateLimitStore)
+  );
 
   // Health check endpoint
   app.get('/health', async () => {
@@ -37,45 +84,63 @@ export function buildGateway(options: BuildGatewayOptions = {}): FastifyInstance
     };
   });
 
-  // Mock SSO Login endpoint: generates signed test JWTs for personas
-  app.post<{
-    Body: {
-      studentId: string;
-      name: string;
-      email: string;
-      role?: UserRole;
-    };
-  }>('/api/v1/auth/mock-login', async (request, reply) => {
-    const { studentId, name, email, role } = request.body || {};
-    if (!studentId || !name || !email) {
-      return reply.status(400).send({
-        statusCode: 400,
-        error: 'Bad Request',
-        message: 'studentId, name, and email are required for mock SSO login',
-      });
+  // Mock SSO Login endpoint: generates signed test JWTs for synthetic personas (Contract §3.1)
+  app.post('/api/v1/auth/mock-login', async (request, reply) => {
+    if (!isPlainRecord(request.body)) {
+      return sendGatewayError(
+        reply,
+        400,
+        'INVALID_PARAMS',
+        'studentId, name, and email are required for mock SSO login.'
+      );
     }
 
-    const token = signMockToken({ studentId, name, email, role: role || 'STUDENT' });
+    const { studentId, name, email, role } = request.body;
+    if (
+      typeof studentId !== 'string' ||
+      studentId.trim().length === 0 ||
+      typeof name !== 'string' ||
+      name.trim().length === 0 ||
+      typeof email !== 'string' ||
+      email.trim().length === 0
+    ) {
+      return sendGatewayError(
+        reply,
+        400,
+        'INVALID_PARAMS',
+        'studentId, name, and email are required for mock SSO login.'
+      );
+    }
+
+    if (role !== undefined && (typeof role !== 'string' || !VALID_LOGIN_ROLES.includes(role as UserRole))) {
+      return sendGatewayError(reply, 400, 'INVALID_PARAMS', 'Invalid user role specified.');
+    }
+
+    const resolvedRole: UserRole = (role as UserRole | undefined) || 'STUDENT';
+    const cleanClaims = {
+      studentId: studentId.trim(),
+      name: name.trim(),
+      email: email.trim(),
+      role: resolvedRole,
+    };
+
+    const token = signMockToken(cleanClaims);
     return {
       token,
-      user: {
-        studentId,
-        name,
-        email,
-        role: role || 'STUDENT',
-      },
+      user: cleanClaims,
       expiresIn: 3600,
     };
   });
 
-  // User Profile endpoint
+  // User Profile endpoint (Contract §3.1)
   app.get('/api/v1/auth/me', async (request, reply) => {
     if (!request.authContext.isAuthenticated) {
-      return reply.status(401).send({
-        statusCode: 401,
-        error: 'Unauthorized',
-        message: 'Authentication required to access student profile',
-      });
+      return sendGatewayError(
+        reply,
+        401,
+        'AUTHENTICATION_REQUIRED',
+        'Authentication required to access student profile.'
+      );
     }
 
     return {
@@ -84,39 +149,36 @@ export function buildGateway(options: BuildGatewayOptions = {}): FastifyInstance
     };
   });
 
-  // Mock Query Proxy endpoint: demonstrates token termination & sanitized header forwarding (FR-07)
-  app.post<{
-    Body: {
-      toolName?: string;
-      parameters?: Record<string, unknown>;
-    };
-  }>('/api/v1/query', async (request, reply) => {
-    // If requesting personal course schedule without authentication, halt (FR-06, FR-07)
-    if (request.body?.toolName === 'get_course_schedule' && !request.authContext.isAuthenticated) {
-      return reply.status(401).send({
-        statusCode: 401,
-        error: 'Unauthorized',
-        message: 'Authentication required for personal course schedule lookup',
-      });
+  // Direct Tool Query Proxy endpoint: forwards validated JSON-RPC calls to internal MCP (Contract §3.2)
+  app.post('/api/v1/query', async (request, reply) => {
+    if (!isPlainRecord(request.body)) {
+      return sendGatewayError(reply, 400, 'INVALID_PARAMS', 'Request body must be a JSON object.');
     }
 
-    // Inspect headers passed downstream to verify complete absence of raw bearer token (FR-07)
-    const rawAuthHeader = request.headers.authorization;
-    const injectedStudentId = request.headers['x-authenticated-student-id'];
-    const injectedRole = request.headers['x-authenticated-user-role'];
+    const result = await forwardToolQuery({
+      toolName: request.body.toolName,
+      parameters: request.body.parameters,
+      authContext: request.authContext,
+      mcpUrl,
+      timeoutMs: mcpTimeoutMs,
+      fetchImpl,
+    });
 
-    return {
-      success: true,
-      downstreamContext: {
-        rawAuthorizationPresent: Boolean(rawAuthHeader),
-        injectedStudentId: injectedStudentId || null,
-        injectedRole: injectedRole || 'GUEST',
-        clientIp: request.authContext.clientIp,
-      },
-      message: 'Request passed gateway perimeter security checks',
-    };
+    if (result.ok) {
+      return reply.status(200).send(result.body);
+    }
+
+    return reply.status(result.statusCode).send(result.body);
+  });
+
+  // Compound Agent Chat SSE Stream Proxy endpoint (Contract §3.3)
+  app.post('/api/v1/chat/stream', async (request, reply) => {
+    await handleChatStream(request, reply, {
+      agentStreamUrl,
+      timeoutMs: chatTimeoutMs,
+      fetchImpl,
+    });
   });
 
   return app;
 }
-
