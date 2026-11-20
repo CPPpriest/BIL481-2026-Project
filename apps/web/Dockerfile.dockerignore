@@ -1,0 +1,22 @@
+# Build-context filter for apps/web/Dockerfile (BuildKit reads <Dockerfile>.dockerignore).
+# The context is the repository root; only what the web image needs is sent.
+
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/next-env.d.ts
+
+# Local configuration and secrets never enter the image.
+**/.env
+**/.env.*
+!**/.env.example
+
+.git
+.claude
+docs
+comparisons
+tests
+apps/web/tests
+*.log

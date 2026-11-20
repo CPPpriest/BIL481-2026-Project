@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { FixtureBanner } from '@/components/FixtureBanner';
+import { SessionProvider } from '@/components/SessionProvider';
 import { SiteHeader } from '@/components/SiteHeader';
 import styles from './layout.module.css';
 import './globals.css';
@@ -26,11 +27,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <a className="skip-link" href="#main-content">
           İçeriğe geç
         </a>
-        <SiteHeader />
-        <FixtureBanner />
-        <main id="main-content" className={styles.main} tabIndex={-1}>
-          {children}
-        </main>
+        <SessionProvider>
+          <SiteHeader />
+          <FixtureBanner />
+          <main id="main-content" className={styles.main} tabIndex={-1}>
+            {children}
+          </main>
+        </SessionProvider>
         <footer className={styles.footer}>
           <p>
             Kampüs verileri şu an <strong>sentetik (mock)</strong> kaynaklardan gelir; gerçek
