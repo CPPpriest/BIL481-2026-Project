@@ -8,6 +8,8 @@ export interface DataCardProps {
   /** Short description of what the card shows; also used as the accessible description. */
   description: string;
   highlighted?: boolean;
+  /** Metadata badges shown next to the title (simulated / cache / stale). */
+  badges?: ReactNode;
   children: ReactNode;
 }
 
@@ -15,7 +17,7 @@ export interface DataCardProps {
  * Shared frame for the three "Campus at a Glance" cards (FR-18). The content
  * (menu, shuttle, library) is passed in as children by each card.
  */
-export function DataCard({ id, title, description, highlighted = false, children }: DataCardProps) {
+export function DataCard({ id, title, description, highlighted = false, badges, children }: DataCardProps) {
   const headingId = `${id}-title`;
   const descriptionId = `${id}-description`;
 
@@ -30,6 +32,7 @@ export function DataCard({ id, title, description, highlighted = false, children
         <h2 id={headingId} className={styles.title}>
           {title}
         </h2>
+        {badges}
       </header>
       <p id={descriptionId} className={styles.description}>
         {description}

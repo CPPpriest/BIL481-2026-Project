@@ -6,29 +6,7 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  align-items: start;
   gap: 16px;
-}
-
-.placeholder {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.skeleton {
-  display: block;
-  height: 12px;
-  border-radius: 6px;
-  background: var(--color-surface-muted);
-}
-
-.short {
-  width: 60%;
-}
-
-.placeholderText {
-  margin: 8px 0 0;
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
 }
