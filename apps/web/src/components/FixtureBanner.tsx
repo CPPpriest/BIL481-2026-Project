@@ -20,8 +20,8 @@ export function FixtureBanner() {
 
   return (
     <div className={styles.banner} role="note">
-      <strong>Örnek veri modu:</strong> Kartlar gerçek backend&apos;e bağlı değil, yerel fixture verisi
-      gösteriliyor.
+      <strong>Örnek veri modu:</strong> Kartlar ve asistan gerçek backend&apos;e bağlı değil, yerel fixture
+      verisi gösteriliyor.
       {scenario !== 'normal' && <> Zorlanan senaryo: <code>{scenario}</code>.</>}
     </div>
   );

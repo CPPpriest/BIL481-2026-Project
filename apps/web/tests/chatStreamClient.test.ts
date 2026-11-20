@@ -138,6 +138,8 @@ describe('chat stream client — failures after streaming started', () => {
 
     expect(final.phase).toBe('error');
     expect(final.error?.code).toBe('AGENT_ERROR');
+    // The agent's (English) message is replaced by a fixed Turkish text.
+    expect(final.error?.message).toBe('Asistan cevap üretirken bir hata oluştu.');
     expect(final.tools).toHaveLength(1);
     expect(final.text.length).toBeGreaterThan(0);
   });
