@@ -5,9 +5,9 @@
 | Field | Detail |
 | :--- | :--- |
 | **Course** | BIL 481 Software Engineering, Fall 2026, TOBB University of Economics and Technology |
-| **Assignment** | Project Assignment 2 (Design & Skeleton) |
+| **Assignment** | Project Assignment 2 (Design & Skeleton); updated during Project Assignment 3 (Implementation & Deployment) |
 | **Group Name** | Group-ASYM |
-| **Document Version / Date** | Version 1.0 (Final Deliverable), 15 November 2026 |
+| **Document Version / Date** | Version 1.1 (PA3 working update — web client), 20 November 2026. Version 1.0 (PA2 final deliverable, 15 November 2026) is preserved in the Git history of `main`; see the [Change Record](#change-record). |
 | **Repository Filepath** | `docs/Design_Document.md` |
 | **Related Baseline Documents** | `docs/Project_Definition_Document.md`, `docs/Project_Plan_Document.md`, `docs/Requirements_Document.md`, `docs/QA_Plan.md` |
 
@@ -24,10 +24,22 @@ In compliance with the BIL 481 Project Assignment 2 specification, each team mem
 | **Arda Çelik** | 241101065 | [`@ardacelik11`](https://github.com/ardacelik11) | Connector & Data Resilience Lead | **Data & Decisions Lead:** Authored Section 2.1 (Codebase Structure, Monorepo Layout, Packaging), Section 2.2.3 & 2.3.4 (Campus Connectors, Deterministic Mock Data, TTL Caching, Circuit Breaking), Section 4 (Design Decisions: 4.1 Redis vs Memory Map, 4.2 Fastify vs Express editing). |
 | **Ahmet Sefa Efendioğlu** | 241101066 | [`@Sefa-Efendioglu`](https://github.com/Sefa-Efendioglu) | QA, Security & Gateway Lead | **Security & QA Verification:** Authored Section 2.2.4 & 2.3.5 (API Gateway Architecture, Perimeter Token Termination, Sliding-Window Rate Limiting), drafted Section 4.2 evaluation material (Fastify vs Express), and performed cross-document QA audit against the QA Plan. |
 
+**PA3 update (Version 1.1):** The web client sections (1.2, 1.3, 2.1, 2.2.2, 2.3.3, 2.4, 3.2–3.6, 5) were updated by Murat Can Işık (document lead, M-11) from the web client handover written by Yunus Emre Biçer ([`docs/assignment3/handovers/yunus.md`](assignment3/handovers/yunus.md), Y-13). The facts come from that handover and were checked against `dev` at `6cc1d07`; the wording is Murat's. The gateway, MCP/agent and connector sections are updated in later PA3 revisions.
+
+---
+
+## Change Record
+
+| Version | Date | Updated Sections | Description of Changes | Updated By |
+| :--- | :--- | :--- | :--- | :--- |
+| 1.0 | 15 Nov 2026 | All | PA2 final deliverable (design and skeleton). | All members (see attribution above) |
+| 1.1 | 20 Nov 2026 | Header, 1.2, 1.3, 2.1.1, 2.1.2, 2.2.2, 2.3.3, 2.4, 3.2–3.6, 5, 6 | Web client moved from *Planned* to *Implemented* (Next.js 16 App Router, React 19, CSS Modules); three dashboard cards instead of four; router step for personal-timetable words and held-out measurement; current web interfaces; implemented UI vs. wireframe differences; Next.js rewrite of `/api/v1/*` in the sequence diagrams; **design decision: no automatic SSE reconnect** (API Contract v1.1 §3.3). Source: web client handover (Y-13). | Murat Can Işık (source: Yunus Emre Biçer) |
+
 ---
 
 ## Table of Contents
 
+- [Change Record](#change-record)
 - [1. System Overview](#1-system-overview)
   - [1.1 Brief Project Description](#11-brief-project-description)
   - [1.2 System Architecture](#12-system-architecture)
@@ -98,10 +110,17 @@ To ensure absolute engineering transparency, the system architecture distinguish
   - **API Gateway Skeleton (`apps/api-gateway`):** Fastify 4.28 server skeleton, custom mock-SSO JWT verification, token termination/stripping, trusted header injection, and in-memory sliding-window rate limiting store (`InMemoryRateLimiterStore`) (FR-07, FR-08).
   - **MCP Server Core (`apps/mcp-server`):** `@modelcontextprotocol/sdk` (v1.32.2) protocol implementation, Zod 3.23.8 strict schema validation, `ToolDispatcher` pipeline with auth guarding, `StdioServerTransport`, `SSEServerTransport` (legacy HTTP+SSE), custom JSON-RPC 2.0 `POST /mcp` endpoint, `/health` heartbeat, and deterministic sample mock flows (FR-01, FR-02, FR-03–06).
   - **Campus Connectors & Resilience (`packages/connectors`):** Pluggable `ICampusConnector` contracts, deterministic seeded synthetic mock data generators (Mulberry32 PRNG), `InMemoryCacheStore`, 3-state circuit breaker state machine, and stale-if-error fallback executor (FR-03–06, FR-09–12).
-  - **Test Infrastructure:** Vitest 5.1.0 test runner executing 146 offline unit and integration tests across 10 test files with zero external service dependencies (NFR-08).
+  - **Test Infrastructure:** Vitest 5.1.0 test runner executing 146 offline unit and integration tests across 10 test files with zero external service dependencies (NFR-08). *(PA2 baseline. On `dev` at `6cc1d07`, 20 Nov 2026: 230 tests in 20 files, of which 111 are web tests.)*
+
+- **Implemented in Phase 3 (PA3, state of `dev` at `6cc1d07`, 20 November 2026) — web client only in this revision:**
+  - **Presentation UI (`apps/web`):** Next.js 16.4.6 (App Router), React 19.3.1 and CSS Modules (no Tailwind; team decision, 19 Nov 2026), Turkish UI. Pages: dashboard `/`, assistant `/asistan`, login `/giris`, health check `/healthz` (FR-18, NFR-09 web part).
+  - **Dashboard cards and gateway client:** three cards (cafeteria, shuttle, library) using a typed client for `POST /api/v1/query` (API Contract v1.1 §3.2, §3.4) and a fixture mode with a visible "Örnek veri modu" (sample data mode) banner (FR-18, FR-19).
+  - **Mock-SSO login and sign-out (FR-15):** two fixed synthetic personas; JWT kept only in `sessionStorage`.
+  - **Chat stream client (FR-17):** `fetch()`-based SSE parser and turn-state reducer for `POST /api/v1/chat/stream`. **The chat screen that uses it is still planned (Y-07).**
+  - **Web Docker image** with standalone Next.js output and `/healthz` (NFR-09, web part).
 
 - **Planned for Phase 3 (Core Development Roadmap):**
-  - **Presentation UI:** Next.js 14 App Router, React 18, and Tailwind CSS responsive interface with live SSE streaming client (FR-15, FR-17, FR-18).
+  - **Presentation UI (remaining):** chat screen with streamed answer and one badge per tool (Y-07), remaining chat states (Y-08) and cross-browser/viewport checks (Y-10).
   - **AI Agent Integration:** Google Gemini API/SDK client integration (`@google/genai` or `@google/generative-ai`), live multi-tool function calling, and automated prompt PII scrubber (FR-13, FR-14; Phase 2 provides `IAgentOrchestrator` skeleton).
   - **Centralized Infrastructure & Caching:** Live Redis 7.2 containerized service (replacing in-memory stores for multi-instance cache and atomic sliding-window rate limiting) via Docker Compose (FR-08–11).
   - **Production Gateway Plugins:** Ecosystem plugins (`@fastify/jwt`, `@fastify/rate-limit`, `@fastify/http-proxy`) and official MCP Streamable HTTP transport integration.
@@ -116,9 +135,10 @@ The architecture supports two distinct execution paths based on query complexity
 
 ```mermaid
 flowchart TD
-    subgraph Tier1["1. Presentation Tier (Phase 2: Intent Router | Phase 3: Next.js 14 UI)"]
-        ClientUI["Web Client Dual View (Wireframe Planned Phase 3)"]
+    subgraph Tier1["1. Presentation Tier (Next.js 16 App Router, implemented in PA3)"]
+        ClientUI["Web Client: Dashboard (/) + Assistant (/asistan)"]
         Router{"Bilingual Deterministic Intent Router (FR-16)"}
+        Rewrite["Next.js server: rewrites /api/v1/* to GATEWAY_URL"]
         ClientUI -->|"User Query"| Router
     end
 
@@ -164,8 +184,9 @@ flowchart TD
     end
 
     %% Data Routing Links
-    Router -->|"Atomic Query: DIRECT_WIDGET"| Gateway
-    Router -->|"Compound Query: LLM_AGENT"| Gateway
+    Router -->|"Atomic Query: DIRECT_WIDGET"| Rewrite
+    Router -->|"Compound Query: LLM_AGENT"| Rewrite
+    Rewrite -->|"Same-origin /api/v1/* (no CORS)"| Gateway
     Gateway -->|"Proxied Auth Context (X-Authenticated-*)"| Agent
     Gateway -->|"Direct Fast-Path Tool Invocations"| MCPServer
     Agent -->|"Standardized tools/call Envelopes"| MCPServer
@@ -183,8 +204,8 @@ The system distinguishes between technologies actively implemented and executed 
 | **Intent Routing** | TypeScript RegExp Engine (`apps/web`) | TS 5.4.5 | **Implemented (Phase 2)** | Client-side bilingual (Turkish/English) deterministic intent classification (`routeStudentQuery`) with zero external runtime dependencies (FR-16). |
 | **API Gateway Core** | Fastify | Fastify 4.28.1 | **Implemented (Phase 2)** | High-throughput gateway skeleton, custom mock-SSO JWT verification, token stripping, header injection, and in-memory rate limiting (FR-07, FR-08). |
 | **Connector Resilience** | In-Memory Cache & Circuit Breaker | Native TypeScript | **Implemented (Phase 2)** | Seeded synthetic mock generators (Mulberry32 PRNG), `InMemoryCacheStore`, 3-state circuit breaker, and stale-if-error fallback executor (FR-03–06, FR-09–12). |
-| **Testing & Verification** | Vitest | Vitest 5.1.0 | **Implemented (Phase 2)** | Offline/mock unit and integration testing suite (146 tests, 10 files) executing in `< 1s` for air-gapped CI/CD compliance (NFR-08). |
-| **Presentation UI** | Next.js, React, Tailwind CSS | Next.js 14, React 18 | **Planned (Phase 3)** | Dual-view responsive web interface (Campus Dashboard & Conversational Assistant) and SSE streaming UI listener (FR-15, FR-17, FR-18). |
+| **Testing & Verification** | Vitest | Vitest 5.1.0 | **Implemented (Phase 2)** | Offline/mock unit and integration testing suite (146 tests, 10 files in PA2; 230 tests, 20 files on `dev` at `6cc1d07`) for air-gapped CI/CD compliance (NFR-08). |
+| **Presentation UI** | Next.js (App Router), React, CSS Modules | Next.js 16.4.6, React 19.3.1 | **Implemented (Phase 3)** | Dashboard with three cards, mock-SSO login/sign-out and the SSE chat stream client (FR-15, FR-17, FR-18). The chat screen is planned (Y-07). Tailwind CSS was dropped in favour of CSS Modules (fewer dependencies; team decision, 19 Nov 2026). |
 | **AI / LLM Integration** | Google Gemini API, Google Gen AI SDK | Gemini 1.5 Flash / 2.0 | **Planned (Phase 3)** | Autonomous multi-tool reasoning, function calling, contextual synthesis, and prompt PII scrubber (FR-13, FR-14; Phase 2 provides `IAgentOrchestrator` skeleton). |
 | **Centralized Caching** | Redis | Redis 7.2 (Alpine) | **Planned (Phase 3)** | Shared multi-instance TTL cache (replacing `InMemoryCacheStore`) and distributed atomic sliding-window rate limiting (replacing `InMemoryRateLimiterStore`) (FR-08–11). |
 | **Gateway Production Plugins** | `@fastify/jwt`, `@fastify/rate-limit`, `@fastify/http-proxy` | Latest Fastify 4.x Plugins | **Planned (Phase 3)** | Ecosystem plugins for production JWT verification, reverse proxy routing to MCP server, and Redis cluster rate limiting. |
@@ -216,6 +237,12 @@ BIL481-2026-Project/
 ├── apps/
 │   ├── mcp-server/            # MCP server, ToolDispatcher, stdio/HTTP transports (Murat)
 │   ├── web/                   # Next.js web client, bilingual deterministic intent router (Yunus)
+│   │   ├── src/app/           # Pages: / (dashboard), /asistan, /giris, /healthz
+│   │   ├── src/components/    # Dashboard, cards/, QueryBox, SessionProvider, SiteHeader, LoginForm
+│   │   ├── src/lib/           # gateway/ (query client), chat/ (SSE stream client), auth/ (mock-SSO)
+│   │   ├── src/router/        # routeStudentQuery (FR-16)
+│   │   ├── tests/             # Web unit tests and fixtures
+│   │   └── Dockerfile         # Standalone Next.js image (PA3)
 │   └── api-gateway/           # Fastify gateway, JWT termination, rate limiter (Sefa)
 ├── tests/
 │   ├── mcp-server/            # Unit tests for ToolDispatcher, registry, mock flow (Murat)
@@ -229,7 +256,8 @@ BIL481-2026-Project/
     ├── Design_Document.md     # Consolidated Project Assignment 2 deliverable
     ├── QA_Plan.md             # Quality Assurance and verification plan (Sefa)
     ├── _sections/             # Individual component design drafts (Murat, Yunus, Arda, Sefa)
-    └── wireframes/            # Low-fidelity SVG visual interface wireframes (Yunus)
+    ├── wireframes/            # Low-fidelity SVG visual interface wireframes (Yunus)
+    └── assignment3/           # PA3: contracts/, acceptance tests, deployment plan, test results, evidence/, handovers/
 ```
 
 **Ownership Rule:** Each team member commits primarily within their designated subsystem. Shared interfaces change exclusively in `packages/shared` under Murat's coordination. All features merge into `dev` through peer-reviewed pull requests.
@@ -249,7 +277,7 @@ flowchart LR
     mcp -. "Phase 3 runtime hook:<br/>registerConnectorHandlers" .-> connectors
     gateway --> shared
     web --> shared
-    web -. "HTTP /api/v1 (planned)" .-> gateway
+    web -. "HTTP /api/v1 via Next.js rewrite (PA3)" .-> gateway
     gateway -. "HTTP /mcp (planned)" .-> mcp
 ```
 
@@ -327,17 +355,18 @@ The core middleware server coordinates tool discovery, validation, dispatching, 
 The presentation tier hosts the user-facing web client and lightweight deterministic routing:
 
 1. **Dual-View UX Strategy:**
-   - *Campus at a Glance Dashboard:* Renders four responsive cards (Cafeteria, Shuttles, Library, Service Health) loaded concurrently from cache without LLM latency (FR-18).
-   - *Conversational Assistant:* Renders streaming responses over SSE, displaying one status/duration badge per invoked tool (FR-17) and resilient error notices (FR-19).
+   - *Campus at a Glance Dashboard:* Renders **three** responsive cards (Cafeteria, Shuttles, Library) loaded concurrently through the gateway without LLM latency (FR-18). The fourth card of the PA2 design (Service Health / connector telemetry) is **not implemented in PA3**: API Contract v1.1 defines no gateway endpoint for it and AT-01..AT-04 do not cover it. `checkConnectorHealth()` remains available in `packages/connectors` for later use.
+   - *Conversational Assistant:* Renders streaming responses over SSE, displaying one status/duration badge per invoked tool (FR-17) and resilient error notices (FR-19). *PA3 status: the stream client is implemented; the chat screen is planned (Y-07).*
 2. **Bilingual Deterministic Intent Router (FR-16):** Implemented in `apps/web/src/router/routeStudentQuery.ts`. Evaluates natural language queries without network or LLM dependencies:
    - *Step 1:* Normalizes Unicode diacritics, Turkish characters (ç, ğ, ı, ö, ş, ü), case, and whitespace.
    - *Step 2:* If empty, routes to `LLM_AGENT (EMPTY_QUERY)`.
    - *Step 3:* Inspects compound conjunctions (`and`, `then`, `after`, `ve`, `sonra`, commas, `before`, `with`, `ile`, `önce`). If present, routes to `LLM_AGENT (COMPOUND_QUERY)`.
-   - *Step 4:* Evaluates regex keyword groups for Cafeteria, Shuttle, and Library.
+   - *Step 3b (added in PA3):* If the query contains a personal-timetable word (`ders…`, `sınav…`, `laboratuvar…`, `class(es)`, `lecture(s)`, `course(s)`, `exam(s)`), routes to `LLM_AGENT (PERSONAL_QUERY)`, even if it also names a cafeteria, shuttle or library keyword.
+   - *Step 4:* Evaluates regex keyword groups for Cafeteria, Shuttle, and Library. Turkish keywords accept suffixes (`servis\w*`, `kutuphane\w*`, `ring\w*`, `metro\w*`, …); English plurals and the words `bus` and `eat` are included (PA3).
    - *Step 5:* If 0 domains match → `LLM_AGENT (UNMATCHED_QUERY)`; if > 1 match → `LLM_AGENT (AMBIGUOUS_QUERY)`.
    - *Step 6:* If exactly 1 domain matches → returns `DIRECT_WIDGET` mapped to the corresponding MCP tool name (`get_cafeteria_menu`, `get_shuttle_schedule`, `get_library_occupancy`).
    - *Identity Protection:* Course queries are never routed directly; they require authenticated session context and route to `LLM_AGENT`.
-3. **Router Verification:** Tested against a labeled benchmark of 40 queries (20 Turkish, 20 English) achieving 100% classification accuracy with 45 passing tests in `apps/web`.
+3. **Router Verification (updated in PA3):** The original 40-query benchmark (20 Turkish, 20 English, written together with the patterns) still passes. On a **held-out set of 40 unseen queries** the PA2 router scored **82.5 %** (compound → agent 7/10) and on a further **20-query validation set 65 %** (compound 3/4) — below the FR-16 targets. After a category-based fix (suffixes, plurals, personal-timetable words) both sets reach 100 % (compound 10/10 and 4/4). The validation result is optimistic because that set was written after the error categories were known. Evidence: [`docs/assignment3/evidence/fr16-router/`](assignment3/evidence/fr16-router/).
 
 ##### Implementation Status (Yunus)
 
@@ -346,8 +375,9 @@ The presentation tier hosts the user-facing web client and lightweight determini
 | **Query Normalization** | FR-16 | **Implemented:** Turkish diacritic & case normalization. | Expand colloquial slang dictionary. |
 | **Intent Router** | FR-16 | **Implemented:** Deterministic regex classification algorithm. | Telemetry tracking for misclassifications. |
 | **Shared Tool Mapping** | FR-16 | **Implemented:** Binds directly to `packages/shared`. | Direct UI widget auto-triggering. |
-| **Dashboard UI** | FR-18 | **Planned:** Low-fidelity SVG wireframe defined. | Next.js 14 React components & card grid. |
-| **SSE Chat Stream** | FR-17, FR-19 | **Planned:** State model & retry backoff designed. | EventSource listener with telemetry chips. |
+| **Dashboard UI** | FR-18 | **Planned:** Low-fidelity SVG wireframe defined. | **Implemented (PA3):** three cards, gateway client, fixture mode. |
+| **SSE Chat Stream** | FR-17, FR-19 | **Planned:** State model & retry backoff designed. | **Client implemented (PA3):** `fetch()` stream + incremental SSE parser, no automatic reconnect. Chat screen **planned** (Y-07). |
+| **Login / Sign-out** | FR-15 | — | **Implemented (PA3):** mock-SSO login with two synthetic personas, `sessionStorage` session, sign-out. |
 
 ---
 
@@ -658,7 +688,8 @@ export interface DirectWidgetRoute {
   normalizedQuery: string;
 }
 
-export type AgentRoutingReason = 'EMPTY_QUERY' | 'COMPOUND_QUERY' | 'AMBIGUOUS_QUERY' | 'UNMATCHED_QUERY';
+export type AgentRoutingReason =
+  | 'EMPTY_QUERY' | 'COMPOUND_QUERY' | 'PERSONAL_QUERY' | 'AMBIGUOUS_QUERY' | 'UNMATCHED_QUERY'; // PERSONAL_QUERY added in PA3
 
 export interface AgentRoute {
   route: 'LLM_AGENT';
@@ -670,6 +701,65 @@ export type StudentQueryRoute = DirectWidgetRoute | AgentRoute;
 
 export function normalizeStudentQuery(query: string): string;
 export function routeStudentQuery(query: string): StudentQueryRoute;
+```
+
+The following interfaces were added in PA3 (summarised; full definitions in the source files):
+
+```typescript
+// apps/web/src/lib/gateway/client.ts — POST /api/v1/query (API Contract v1.1 §3.2, §3.4)
+export function createGatewayClient(options: { transport: Transport; baseUrl?: string; timeoutMs?: number }): GatewayClient;
+interface GatewayClient {
+  query<T extends ToolName>(toolName: T, parameters: ToolParams<T>,
+    options?: { token?: string | null; signal?: AbortSignal }): Promise<QueryResult<T>>;
+}
+type QueryResult<T> =
+  | { ok: true; toolName: T; data: ToolData<T>; meta: ResponseMeta }   // meta: isSimulated, isStale, source, timestamp, durationMs?
+  | { ok: false; code: GatewayErrorCode | ClientErrorCode; message: string; status?: number; retryAfterSeconds?: number };
+// A studentId parameter is refused before any request is sent (identity comes only from the JWT).
+
+// apps/web/src/lib/chat/chatStreamClient.ts — POST /api/v1/chat/stream (API Contract v1.1 §3.3)
+export function createChatStreamClient(options: {
+  transport: ChatTransport; baseUrl?: string; processingNoticeMs?: number /* 5000 */; idleTimeoutMs?: number /* 20000 */;
+}): { send(message: string, options: { token: string | null | undefined; signal?: AbortSignal;
+        onUpdate?: (state: ChatTurnState) => void }): Promise<ChatTurnState> };
+interface ChatTurnState {
+  phase: 'connecting' | 'streaming' | 'done' | 'error';
+  text: string;                    // streamed chunks, then the authoritative done.answer
+  tools: { toolName: string; status: 'LIVE' | 'CACHE_HIT' | 'STALE' | 'ERROR'; durationMs: number }[]; // one per tool event
+  toolsInvoked: string[] | null; isComplete: boolean; slow: boolean; error: ChatError | null;
+}
+
+// apps/web/src/lib/auth/authClient.ts and src/components/SessionProvider.tsx — mock-SSO session (FR-15)
+export function createAuthClient(options: { transport: AuthTransport }): {
+  login(user: SessionUser): Promise<LoginResult>;                        // POST /api/v1/auth/mock-login
+  verify(token: string): Promise<'valid' | 'invalid' | 'unreachable'>;   // GET /api/v1/auth/me
+};
+export function useSession(): {
+  state: { status: 'loading' } | { status: 'guest'; endReason: 'expired' | 'invalid' | null }
+       | { status: 'authenticated'; session: { token: string; user: SessionUser; expiresAt: number } };
+  login(personaId: string): Promise<LoginResult>; logout(): void; reportUnauthorized(): void;
+};
+```
+
+**Component structure (PA3):**
+
+```mermaid
+flowchart TB
+  subgraph Browser["Browser (Next.js client components)"]
+    QB[QueryBox] --> R[routeStudentQuery]
+    D[Dashboard] --> MC[MenuCard] & SC[ShuttleCard] & LC[LibraryCard]
+    MC & SC & LC --> UQ[useToolQuery] --> GC[gateway client]
+    AV[AssistantView] -. planned Y-07 .-> CC[chat stream client]
+    SP[SessionProvider] --> AC[auth client]
+    H[SiteHeader] --> SP
+    AV --> SP
+  end
+  GC -->|POST /api/v1/query| NX[Next.js server: rewrite /api/v1/*]
+  CC -->|POST /api/v1/chat/stream| NX
+  AC -->|mock-login, /auth/me| NX
+  NX -->|GATEWAY_URL| GW[Fastify gateway]
+  GC -. fixtures mode .-> FX[fixture transports]
+  AC -. fixtures mode .-> FX
 ```
 
 ---
@@ -812,6 +902,22 @@ The visual presentation tier is designed around two committed low-fidelity SVG w
        +-----------------------------------------------------------------------+
 ```
 
+*The wireframes and the layout descriptions in 2.4.1–2.4.3 are the PA2 design. The implemented PA3 web client differs as recorded in the table below; where they differ, the table describes the implemented system.*
+
+**Implemented UI vs. PA2 design (PA3, `dev` at `6cc1d07`):**
+
+| PA2 design says | Implemented in PA3 | Reason |
+| :--- | :--- | :--- |
+| Card A: *tabbed* Lunch/Dinner | Lunch and dinner shown **together**, plus a **date picker** (default: today in Türkiye time) | Both meals fit on the card; the date picker lets AT-01 check weekends through the UI |
+| Card B: countdowns *with walking-time buffer* | Countdowns (e.g. "12 dk sonra" — "in 12 min") and a route selector (Ana Ring / Metro / Yurtlar); **no walking buffer** | The shuttle contract carries no walking-time data |
+| Card C: *circular gauge* | Large percentage plus per-floor **bars**, floor selector | Simpler and accessible (`role="meter"`) |
+| Card D: connector telemetry | **Not implemented** | No gateway endpoint in API Contract v1.1; not covered by AT-01..AT-04 |
+| Clicking a card pre-fills the assistant input | **Not implemented**; the dashboard query box offers example questions instead | Not needed by AT-01..AT-04; recorded as a gap |
+| Header "[Name – Auth]" | Guest with "Giriş yap" (sign in), or name + student number + "Çıkış" (sign out) | FR-15 |
+| Badges for simulated / cache / stale data | Every card shows a "Sentetik veri" (synthetic data) badge from `meta.isSimulated`, **separately** from the source badge from `meta.source`; a stale warning with the original cache time; an error state with retry; last-updated time and refresh | API Contract v1.1 §1 (source and simulation are not conflated) |
+| Mobile: collapsed chat drawer; desktop > 1440 px: side-by-side assistant | Dashboard and assistant are **separate pages** (`/` and `/asistan`); cards use a responsive grid (one column on phones) | Simpler navigation for PA3 |
+| — | A **fixture-mode banner** ("Örnek veri modu" — sample data mode) | Screenshots taken with fixtures can never be mistaken for end-to-end evidence |
+
 #### 2.4.1 Campus at a Glance Dashboard Layout
 
 The dashboard organizes essential campus metrics to be reachable within **one click** from landing without scrolling (NFR-06):
@@ -829,8 +935,9 @@ The assistant provides full operational transparency into the agentic reasoning 
 - **Status Banners:** Visual banners indicate degraded operational states:
   - Amber banner for stale cache fallback: *"Serving cached menu from 10:15 — Dining service unavailable"*.
   - Blue banner for synthetic stubs: *"Simulated library turnstile feed"*.
-  - Reconnecting banner with retry countdowns during SSE drops (FR-19).
-- **Draft Preservation:** Typed input is never cleared during background reconnects or query retries.
+  - ~~Reconnecting banner with retry countdowns during SSE drops (FR-19).~~ **Superseded in PA3:** when the stream drops, the partial answer is kept and an explicit "Tekrar dene" (retry) action is offered; there is **no automatic reconnect** (see §3.5, API Contract v1.1 §3.3).
+- **Draft Preservation:** Typed input is never cleared during query retries.
+- *PA3 status:* the assistant page exists; the streamed chat screen with badges is planned (Y-07) on top of the implemented stream client.
 
 #### 2.4.3 Responsive Viewport Compatibility (NFR-07)
 
@@ -839,6 +946,8 @@ The assistant provides full operational transparency into the agentic reasoning 
 | **Mobile Displays** | 375 px – 767 px | Single-column stacked cards; collapsed full-screen chat drawer; compact header; wrapping tool badges. |
 | **Tablet Displays** | 768 px – 1023 px | 2-column dashboard card grid; tabbed navigation between Dashboard and Conversational views. |
 | **Desktop Displays**| 1024 px – 1920 px| 2-column dashboard grid; persistent side-by-side assistant view on wide displays (>1440px) without horizontal scrolling. |
+
+*PA3 status (NFR-07):* the implemented client uses separate dashboard and assistant pages and a responsive card grid. It has been checked at 375 px and on desktop in Chrome with no horizontal scrolling; 768 px, 1440 px and other browsers are not checked yet (Y-10).
 
 ---
 
@@ -866,11 +975,11 @@ The team selected four core use cases as the formal architectural baseline for A
 - **Main Flow:**
   1. User submits menu query.
   2. Router classifies query as `DIRECT_WIDGET` mapped to `get_cafeteria_menu`.
-  3. Client dispatches direct query to Gateway (`/api/v1/query`), bypassing AI Agent.
+  3. Client dispatches direct query to `/api/v1/query` on the web app's own origin, bypassing AI Agent; the Next.js server rewrites it to the Gateway (`GATEWAY_URL`, API Contract v1.1 §1, §7).
   4. Gateway forwards request to MCP Server.
   5. MCP Server evaluates 3600s cache (`cache:dining:<date>`).
   6. On cache hit, returns cached menu. On miss, connector retrieves data, populating cache.
-  7. Client renders Lunch/Dinner tabbed card with calorie metrics.
+  7. Client renders the menu card (lunch and dinner together, date picker) with calorie metrics.
 - **Alternative / Error Flows:**
   - *Weekend/Holiday:* Returns `available: false` with explanatory message; UI renders clear closed notice.
   - *Upstream Outage with Retained Cache:* Serves 3×TTL expired cache with amber stale banner and original timestamp (FR-10).
@@ -881,6 +990,7 @@ sequenceDiagram
     actor User
     participant UI as Web Dashboard
     participant Router as routeStudentQuery
+    participant NX as Next.js server (rewrite)
     participant Gateway as API Gateway
     participant MCP as MCP Server + Cache
     participant Dining as Cafeteria Connector
@@ -888,7 +998,8 @@ sequenceDiagram
     User->>UI: Submit menu query
     UI->>Router: routeStudentQuery("Bugün yemekte ne var?")
     Router-->>UI: DIRECT_WIDGET (get_cafeteria_menu)
-    UI->>Gateway: Direct menu request
+    UI->>NX: POST /api/v1/query (same origin)
+    NX->>Gateway: Rewrite to GATEWAY_URL
     Gateway->>MCP: Forward sanitized tool call
     alt Fresh Cache Hit (< 3600s)
         MCP-->>Gateway: Return cached menu (target: P95 < 250 ms)
@@ -897,8 +1008,9 @@ sequenceDiagram
         Dining-->>MCP: Return CafeteriaDailyMenu
         MCP-->>Gateway: Return tool response
     end
-    Gateway-->>UI: Deliver payload
-    UI-->>User: Render tabbed menu card
+    Gateway-->>NX: Normalized {ok, data, meta}
+    NX-->>UI: Deliver payload
+    UI-->>User: Render menu card (lunch + dinner)
 ```
 
 ---
@@ -912,10 +1024,10 @@ sequenceDiagram
 - **Main Flow:**
   1. User queries shuttle times.
   2. Router returns `DIRECT_WIDGET` mapped to `get_shuttle_schedule`.
-  3. Client dispatches request through Gateway directly to MCP Server.
+  3. Client dispatches request to `/api/v1/query` on its own origin; the Next.js server rewrites it to the Gateway, which forwards it to the MCP Server.
   4. MCP Server checks 120s cache (`cache:shuttle:<route>`).
   5. Connector evaluates scheduled timetable against UTC+3 clock, filtering out past departures.
-  6. UI renders upcoming departures with active vehicle count and walking buffer.
+  6. UI renders upcoming departures as countdowns with a route selector and active vehicle count (no walking buffer in PA3, see §2.4).
 - **Alternative / Error Flows:**
   - *End of Service:* Returns empty departures array; UI renders "No more departures today".
   - *Invalid Route Argument:* Schema validator rejects input with `-32602 (Invalid params)`.
@@ -925,6 +1037,7 @@ sequenceDiagram
     actor User
     participant UI as Dashboard / Chat
     participant Router as routeStudentQuery
+    participant NX as Next.js server (rewrite)
     participant Gateway as API Gateway
     participant MCP as MCP Server + Cache
     participant Shuttle as Shuttle Connector
@@ -932,7 +1045,8 @@ sequenceDiagram
     User->>UI: Query shuttle departures
     UI->>Router: routeStudentQuery("Next shuttle?")
     Router-->>UI: DIRECT_WIDGET (get_shuttle_schedule)
-    UI->>Gateway: Direct shuttle request
+    UI->>NX: POST /api/v1/query (same origin)
+    NX->>Gateway: Rewrite to GATEWAY_URL
     Gateway->>MCP: Forward sanitized tool call
     alt Cache Hit (< 120s)
         MCP-->>Gateway: Return cached departures
@@ -941,7 +1055,8 @@ sequenceDiagram
         Shuttle-->>MCP: Return future departures
         MCP-->>Gateway: Return tool response
     end
-    Gateway-->>UI: Deliver payload
+    Gateway-->>NX: Normalized {ok, data, meta}
+    NX-->>UI: Deliver payload
     UI-->>User: Render departure countdowns
 ```
 
@@ -956,10 +1071,10 @@ sequenceDiagram
 - **Main Flow:**
   1. User queries occupancy.
   2. Router returns `DIRECT_WIDGET` mapped to `get_library_occupancy`.
-  3. Request passes Gateway to MCP Server without LLM call.
+  3. Request goes to `/api/v1/query` on the web app's origin, is rewritten by the Next.js server to the Gateway and passed to the MCP Server without LLM call.
   4. MCP Server queries 60s cache (`cache:library:<floor>`).
   5. Synthetic mock connector calculates occupancy based on time-of-day bell curves.
-  6. UI renders capacity gauge and floor breakdown tagged with `isSimulated: true`.
+  6. UI renders the total percentage and per-floor bars (floor selector), tagged "Sentetik veri" (synthetic data) from `isSimulated: true`.
 - **Alternative / Error Flows:**
   - *Invalid Floor Selection:* Local form validation rejects input or returns `-32602`.
   - *Connector Outage:* Circuit breaker trips; stale cache served with amber warning banner.
@@ -969,6 +1084,7 @@ sequenceDiagram
     actor User
     participant UI as Dashboard View
     participant Router as routeStudentQuery
+    participant NX as Next.js server (rewrite)
     participant Gateway as API Gateway
     participant MCP as MCP Server + Cache
     participant Library as Library Connector
@@ -976,7 +1092,8 @@ sequenceDiagram
     User->>UI: Check library seats
     UI->>Router: routeStudentQuery("Kütüphane dolu mu?")
     Router-->>UI: DIRECT_WIDGET (get_library_occupancy)
-    UI->>Gateway: Direct library request
+    UI->>NX: POST /api/v1/query (same origin)
+    NX->>Gateway: Rewrite to GATEWAY_URL
     Gateway->>MCP: Forward sanitized tool call
     alt Cache Hit (< 60s)
         MCP-->>Gateway: Return cached occupancy
@@ -985,8 +1102,9 @@ sequenceDiagram
         Library-->>MCP: Return LibraryOccupancyReport
         MCP-->>Gateway: Return tool response
     end
-    Gateway-->>UI: Deliver payload
-    UI-->>User: Render seat gauge + Simulated label
+    Gateway-->>NX: Normalized {ok, data, meta}
+    NX-->>UI: Deliver payload
+    UI-->>User: Render occupancy bars + "Sentetik veri" label
 ```
 
 ---
@@ -995,12 +1113,12 @@ sequenceDiagram
 
 - **Primary Actor:** Authenticated Student.
 - **Trigger:** Student submits compound inquiry: *"10:30 dersimden sonra ringe yetişir miyim, bugün yemekte ne var?"*.
-- **Preconditions:** Student holds valid mock-SSO JWT; Gateway and AI Agent operational.
+- **Preconditions:** Student holds valid mock-SSO JWT; Gateway and AI Agent operational. *(PA3, API Contract v1.1 §1 "Chat access": the chat always requires login, for every compound question; a guest is asked to sign in before a chat message can be sent, while the dashboard cards stay public.)*
 - **Postconditions:** Unified natural language response streamed to user; exactly one telemetry badge displayed per tool call; zero raw tokens or student PII transmitted to Gemini.
 - **Main Flow:**
   1. Student enters compound question.
   2. Router detects conjunctions (`sonra`, commas) and multiple domains, returning `LLM_AGENT`.
-  3. Client forwards query and JWT to Gateway.
+  3. Client sends `POST /api/v1/chat/stream` with the query and the JWT (`Authorization: Bearer`) to its own origin; the Next.js server rewrites it to the Gateway. The browser reads the SSE response from the `fetch()` response stream (an `EventSource` cannot send a POST body or an `Authorization` header).
   4. Gateway validates token, strips raw credentials, and creates trusted `AuthContext`.
   5. Gateway forwards query and context to AI Agent.
   6. Agent scrubs PII (FR-14) and formulates multi-tool execution plan.
@@ -1010,14 +1128,15 @@ sequenceDiagram
   10. UI streams response tokens over SSE, appending three telemetry badges.
 - **Alternative / Error Flows:**
   - *Expired Token:* Gateway rejects with HTTP 401; UI prompts login while keeping draft text.
-  - *Slow LLM Response (> 5s):* UI displays "Still processing..." notice; at 20s provides cancel/retry button.
-  - *SSE Connection Drop:* Client automatically retries connection with backoff (1s, 2s, 4s) without losing input (FR-19).
+  - *Slow LLM Response (> 5s):* UI displays "Still processing..." notice when no answer text has arrived after 5 s; the request is cancelled with a retry option after **20 s without any data** (idle timeout), so a long answer that keeps streaming is not cut off.
+  - *SSE Connection Drop (design decision revised in PA3):* the partial answer and the typed draft are kept, the turn ends with `STREAM_INTERRUPTED`, and the user retries explicitly with "Tekrar dene" (retry). There is **no automatic reconnect or resend**, because without server-side replay a reconnect would run the tool chain a second time (API Contract v1.1 §3.3). This replaces the PA2 rule "automatic retry with backoff (1s, 2s, 4s)" (FR-19).
 
 ```mermaid
 sequenceDiagram
     actor Student
     participant UI as Conversational Assistant
     participant Router as routeStudentQuery
+    participant NX as Next.js server (rewrite)
     participant Gateway as API Gateway
     participant Agent as Agent + PII Scrubber
     participant MCP as MCP Server
@@ -1028,7 +1147,8 @@ sequenceDiagram
     Student->>UI: Compound inquiry (Course + Shuttle + Menu)
     UI->>Router: routeStudentQuery(query)
     Router-->>UI: LLM_AGENT (COMPOUND_QUERY)
-    UI->>Gateway: Query + JWT Authorization header
+    UI->>NX: POST /api/v1/chat/stream + JWT Authorization header
+    NX->>Gateway: Rewrite to GATEWAY_URL
     Gateway->>Gateway: Verify JWT, strip token, inject AuthContext
     Gateway->>Agent: Forward query + verified AuthContext
     Agent->>Agent: Scrub PII & formulate tool plan
@@ -1045,7 +1165,8 @@ sequenceDiagram
         Menu-->>Agent: Daily menu details
     end
     Agent-->>Gateway: Streamed synthesis + execution telemetry
-    Gateway-->>UI: SSE event stream
+    Gateway-->>NX: SSE frames (tool, token, done | error)
+    NX-->>UI: SSE stream read via fetch()
     UI-->>Student: Render synthesized answer + 3 tool badges
 ```
 
@@ -1058,11 +1179,12 @@ sequenceDiagram
 | **Simulated Data** | Visible blue badge indicating simulated data; never presented as live campus feed. | FR-12, FR-18 |
 | **Stale Cache Fallback** | Amber warning notice displaying original cache timestamp and failed service. | FR-10, FR-19 |
 | **Empty State** | Structured explanatory message (e.g., *"No classes scheduled for today"*). | FR-19 |
-| **High Latency (> 5s)** | Pulsing "Still processing..." status indicator. | FR-19 |
-| **Request Timeout (20s)**| Automatic request cancellation paired with a one-click "Retry Query" button. | FR-19 |
-| **SSE Disconnection** | Reconnecting banner with exponential backoff (1s, 2s, 4s); user draft is strictly preserved. | FR-19 |
+| **High Latency (> 5s)** | Pulsing "Still processing..." status indicator while no answer text has arrived. | FR-19 |
+| **Request Timeout (20s)**| Cancellation after 20 s without any data (idle timeout) paired with a one-click retry button. | FR-19 |
+| **SSE Disconnection** | *(Revised in PA3)* The partial answer and the user draft are kept; an explicit "Tekrar dene" (retry) action is offered. No automatic reconnect, so the tool chain never runs twice silently (API Contract v1.1 §3.3). | FR-19 |
 | **Tool Telemetry** | Exactly one badge rendered per invoked tool displaying status and duration in milliseconds. | FR-17 |
-| **Unauthenticated Route**| Sign-in prompt for private endpoints while public widgets remain accessible. | FR-15 |
+| **Unauthenticated Route**| Sign-in prompt for private endpoints and for the chat (every compound question) while public widgets remain accessible. | FR-15 |
+| **Fixture Mode** *(PA3)* | "Örnek veri modu" (sample data mode) banner whenever the web client runs on local fixtures instead of the gateway. | FR-12, FR-18 |
 
 ---
 
@@ -1150,6 +1272,9 @@ In compliance with the BIL 481 Project Assignment 2 guidelines, all design decis
   - Temporary Sample Mocks: [`apps/mcp-server/src/mocks/sampleMockHandlers.ts`](../apps/mcp-server/src/mocks/sampleMockHandlers.ts)
 - **Web Client & Bilingual Intent Router:** [`apps/web/src/index.ts`](../apps/web/src/index.ts)
   - Deterministic Intent Router: [`apps/web/src/router/routeStudentQuery.ts`](../apps/web/src/router/routeStudentQuery.ts)
+  - *(PA3)* Next.js pages: [`apps/web/src/app/`](../apps/web/src/app/); dashboard cards: [`apps/web/src/components/cards/`](../apps/web/src/components/cards/)
+  - *(PA3)* Gateway client: [`apps/web/src/lib/gateway/`](../apps/web/src/lib/gateway/); chat stream client: [`apps/web/src/lib/chat/`](../apps/web/src/lib/chat/); mock-SSO session: [`apps/web/src/lib/auth/`](../apps/web/src/lib/auth/)
+  - *(PA3)* Web Docker image: [`apps/web/Dockerfile`](../apps/web/Dockerfile)
 - **Campus Connectors & Data Resilience:** [`packages/connectors/src/index.ts`](../packages/connectors/src/index.ts)
   - Resilient Connector Executor: [`packages/connectors/src/resilience/ResilientConnectorExecutor.ts`](../packages/connectors/src/resilience/ResilientConnectorExecutor.ts)
   - Circuit Breaker State Machine: [`packages/connectors/src/resilience/CircuitBreaker.ts`](../packages/connectors/src/resilience/CircuitBreaker.ts)
@@ -1177,7 +1302,9 @@ The repository contains a 100% offline-executable, zero-network test suite execu
 - **MCP server (`tests/mcp-server/dispatcher.test.ts`):** [`tests/mcp-server/dispatcher.test.ts`](../tests/mcp-server/dispatcher.test.ts) (18 tests passing, verifying tool registration, strict input validation, auth guard, and sample mock flows)
 - **API gateway (`apps/api-gateway/tests/jwtAuth.test.ts`):** [`apps/api-gateway/tests/jwtAuth.test.ts`](../apps/api-gateway/tests/jwtAuth.test.ts) (7 tests passing, verifying JWT verification, token stripping, header injection, and rate limiting)
 
-**Overall Test Suite Total:** **146 tests, 10 test files** (0 failures, completed in < 1s offline).
+**Overall Test Suite Total:** **146 tests, 10 test files** (0 failures, completed in < 1s offline). *(PA2 baseline.)*
+
+**PA3 update:** `npx vitest run` on `dev` at `6cc1d07` (20 Nov 2026, run by Murat Can Işık on Windows 11, Node.js, Vitest 5.1.0): **230 tests in 20 files, all passing**; the web client accounts for 111 of them in 7 files (router incl. held-out sets, gateway client, formatting, SSE parser, chat stream client, auth).
 
 ---
 
@@ -1205,6 +1332,14 @@ The task matrix below records the individual efforts contributed exclusively tow
 | **TSK-DES-10** | Section 2.2.4 & 2.3.5 (API Gateway Architecture, Perimeter Security, Rate Limiter Signatures) | Ahmet Sefa Efendioğlu | Murat Can Işık | 0.15 | Not reported | Completed |
 | **TSK-DES-11** | Section 4.2 Material (Fastify vs Express Benchmark Evaluation & Comparison Code) | Ahmet Sefa Efendioğlu | Arda Çelik | 0.15 | Not reported | Completed |
 | **Total Effort**| **Collaborative Design Document Authoring & Cross-Review** | **All Members** | **Full Team** | **4.80 h** | **Collaborative** | **Completed** |
+
+**PA3 update tasks (Version 1.1 onward):**
+
+| Task ID | Document Work Package | Assigned Lead | Source / Reviewer | Planned Allocation (h) | Actual Effort (h) | Status |
+| :--- | :--- | :--- | :--- | :---: | :---: | :---: |
+| **TSK-DES-12** | Web client handover for the Design Document (Y-13) | Yunus Emre Biçer | Murat Can Işık (review, PR #21) | Not recorded | Not recorded | Completed |
+| **TSK-DES-13** | Update of the web client sections 1.2, 1.3, 2.1, 2.2.2, 2.3.3, 2.4, 3.2–3.6, 5; SSE reconnect decision (M-11) | Murat Can Işık | Source: Yunus Emre Biçer; reviewer: Yunus Emre Biçer | Not recorded | Not recorded | In review |
+| **TSK-DES-14** | Update of gateway, MCP/agent and connector sections (M-11) | Murat Can Işık | Sources: Sefa, Arda handovers | Not recorded | Not recorded | Planned |
 
 *Summary of Member Document Allocations:*
 - **Murat Can Işık:** Estimated 1.50 h | Actual: 1.00 h
