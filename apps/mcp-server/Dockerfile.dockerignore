@@ -1,0 +1,25 @@
+# Build-context filter for apps/mcp-server/Dockerfile.
+# Context is the repository root; only shared, connectors and mcp-server sources enter build stages.
+
+**/node_modules
+**/dist
+**/coverage
+**/.next
+**/*.tsbuildinfo
+
+# Never copy local secrets or VCS history into the container image
+**/.env
+**/.env.*
+!**/.env.example
+
+.git
+.claude
+docs
+comparisons
+tests
+apps/mcp-server/tests
+apps/api-gateway/**
+!apps/api-gateway/package.json
+apps/web/**
+!apps/web/package.json
+*.log
