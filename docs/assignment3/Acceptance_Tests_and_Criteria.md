@@ -8,7 +8,7 @@
 | **Assignment** | Project Assignment 3 — Deliverable 2: Acceptance Tests and Acceptance Criteria |
 | **Group Name** | Group-ASYM |
 | **Document Lead & Author** | **Yunus Emre Biçer** (241101009) — `@YunusEmre113` |
-| **Document Version / Date** | **Version 0.3 (draft for team review), 20 November 2026** — see §9 Change Record |
+| **Document Version / Date** | **Version 0.4 (draft for team review), 20 November 2026** — see §9 Change Record |
 | **Repository Filepath** | `docs/assignment3/Acceptance_Tests_and_Criteria.md` |
 | **Related Documents** | `docs/Requirements_Document.md` (FR/NFR IDs), `docs/Design_Document.md` §3 (UC-01..UC-04), `docs/QA_Plan.md` (TC-01..TC-08), API Contract v1.1 (to be committed as `docs/assignment3/contracts/API_CONTRACT.md`), `docs/assignment3/Deployment_Plan.md` and `docs/assignment3/Test_Results_Report.md` (both in preparation, lead: Ahmet Sefa Efendioğlu) |
 
@@ -20,7 +20,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **Yunus Emre Biçer** | 241101009 | `@YunusEmre113` | Lead author: structure, acceptance criteria, AT-01..AT-04, traceability, task matrix | Drafted v0.1 |
 | **Arda Çelik** | 241101065 | `@ardacelik11` | Review of data, cache and stale-fallback criteria (AC-01.x, AC-02.x, AC-03.x) | Review requested |
-| **Murat Can Işık** | 241101013 | `@cmuratt` | Review of MCP and agent criteria (AC-04.3 – AC-04.7, AC-04.10, AC-04.11) | Review requested |
+| **Murat Can Işık** | 241101013 | `@cmuratt` | Review of MCP and agent criteria (AC-04.3 – AC-04.7, AC-04.10, AC-04.11) | Reviewed — no objection (PR #17 review, 20 Nov 2026) |
 | **Ahmet Sefa Efendioğlu** | 241101066 | `@Sefa-Efendioglu` | Review of gateway, security and end-to-end execution conditions (AC-04.1, AC-04.8, AC-04.9) | Reviewed — approved with two notes (PR #17 comment, 20 Nov 2026) |
 
 Only the work listed as done is claimed. Review rows become "Reviewed" when the reviewer has actually reviewed the section (PR review or written approval).
@@ -413,7 +413,7 @@ Estimates are planning values for Project Assignment 3. Actual hours are filled 
 | TSK-AT-04 | AT-04 steps (§4.4); make concrete after login and chat UI exist | Yunus Emre Biçer | Murat Can Işık, Ahmet Sefa Efendioğlu | 0.30 | — | Draft (behaviour level) |
 | TSK-AT-05 | Correspondence and traceability (§5, §6), scope limits (§7) | Yunus Emre Biçer | Murat Can Işık | 0.20 | ≈ 0.17 | Draft done (v0.1) |
 | TSK-AT-06 | Review of data, cache and stale criteria | Arda Çelik | Yunus Emre Biçer | 0.10 | — | Requested |
-| TSK-AT-07 | Review of agent, MCP and streaming criteria | Murat Can Işık | Yunus Emre Biçer | 0.10 | — | Requested |
+| TSK-AT-07 | Review of agent, MCP and streaming criteria | Murat Can Işık | Yunus Emre Biçer | 0.10 | — | Done (no objection, PR #17 review, 20 Nov 2026) |
 | TSK-AT-08 | Review of gateway/security criteria and execution conditions | Ahmet Sefa Efendioğlu | Yunus Emre Biçer | 0.10 | — | Done (approved, PR #17 comment, 20 Nov 2026) |
 | TSK-AT-09 | Freeze v1.0 (26 Nov 2026) after reviews and UI completion | Yunus Emre Biçer | Entire team | 0.20 | — | Planned |
 | | **Total** | | | **2.00** | **≈ 1.00 so far** (4 of 9 tasks) | |
@@ -427,6 +427,7 @@ Estimates are planning values for Project Assignment 3. Actual hours are filled 
 | 0.1 | 19 Nov 2026 | All | First draft: approach, 34 acceptance criteria, AT-01..AT-04, correspondence, traceability, scope limits, task matrix | Yunus Emre Biçer |
 | 0.2 | 20 Nov 2026 | List of Contributors, §3.4 AC-04.8, §4.4 AT-04 step 8 and evidence, §6.1, §8, Appendix B | AC-04.8 extended to the MCP server not being reachable around the gateway (no host port binding for `mcp-server`; a direct `/mcp` request with a forged identity header from the host fails to connect), as suggested in Ahmet Sefa Efendioğlu's review; matching AT-04 step 8, evidence and direct request added; NFR-05 linked to AC-04.8; Sefa's review recorded as done. His second note (adding the gateway test suites to §6.2 and updating the S-01/S-03 status in §6.3) will be applied after his gateway branch is merged into `dev` | Yunus Emre Biçer |
 | 0.3 | 20 Nov 2026 | Status note, §4.1–4.4 supporting tests, AT-04 step 2, §6.2, §6.3, §7 | Applied the second note of Ahmet Sefa Efendioğlu's review after PR #22 was merged: gateway suites (`queryProxy`, `chatStreamProxy`, `rateLimiter`, `deploymentConfig`) added to §6.2 and the AT tables; S-01 / S-03 marked implemented in §6.3. Also brought the document in line with `dev` at `4f66b28`: login (PR #20), web data cards and chat client implemented; MCP backed by the connector runtime (PR #26, M-01/M-02/M-03) with `tests/mcp-server/httpConnectors.test.ts`; cache still in-memory until A-02; deployment row added. AT-04 step 2 made concrete for the implemented login page. All referenced `dev` paths re-checked | Yunus Emre Biçer |
+| 0.4 | 20 Nov 2026 | List of Contributors, §8 | Recorded Murat Can Işık's review of AC-04.3 – AC-04.7, AC-04.10, AC-04.11 (PR #17, 20 Nov 2026): no objection, consistent with API Contract v1.1. His implementation notes need no change to the criteria: the agent will not call the same tool twice in one turn (AC-04.4), and the AC-04.7 / AC-04.11 evidence will be a redacted outbound provider request log under docs/assignment3/evidence/AT-04/ (no JWT, student ID, name, e-mail or API key), as required by §2.4. Review of AC-01.x – AC-03.x by Arda Çelik is still pending | Yunus Emre Biçer |
 
 ---
 
