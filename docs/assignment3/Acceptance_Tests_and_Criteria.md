@@ -8,7 +8,7 @@
 | **Assignment** | Project Assignment 3 — Deliverable 2: Acceptance Tests and Acceptance Criteria |
 | **Group Name** | Group-ASYM |
 | **Document Lead & Author** | **Yunus Emre Biçer** (241101009) — `@YunusEmre113` |
-| **Document Version / Date** | **Version 0.1 (draft for team review), 19 November 2026** |
+| **Document Version / Date** | **Version 0.2 (draft for team review), 20 November 2026** — see §9 Change Record |
 | **Repository Filepath** | `docs/assignment3/Acceptance_Tests_and_Criteria.md` |
 | **Related Documents** | `docs/Requirements_Document.md` (FR/NFR IDs), `docs/Design_Document.md` §3 (UC-01..UC-04), `docs/QA_Plan.md` (TC-01..TC-08), API Contract v1.1 (to be committed as `docs/assignment3/contracts/API_CONTRACT.md`), `docs/assignment3/Deployment_Plan.md` and `docs/assignment3/Test_Results_Report.md` (both in preparation, lead: Ahmet Sefa Efendioğlu) |
 
@@ -21,7 +21,7 @@
 | **Yunus Emre Biçer** | 241101009 | `@YunusEmre113` | Lead author: structure, acceptance criteria, AT-01..AT-04, traceability, task matrix | Drafted v0.1 |
 | **Arda Çelik** | 241101065 | `@ardacelik11` | Review of data, cache and stale-fallback criteria (AC-01.x, AC-02.x, AC-03.x) | Review requested |
 | **Murat Can Işık** | 241101013 | `@cmuratt` | Review of MCP and agent criteria (AC-04.3 – AC-04.7, AC-04.10, AC-04.11) | Review requested |
-| **Ahmet Sefa Efendioğlu** | 241101066 | `@Sefa-Efendioglu` | Review of gateway, security and end-to-end execution conditions (AC-04.1, AC-04.8, AC-04.9) | Review requested |
+| **Ahmet Sefa Efendioğlu** | 241101066 | `@Sefa-Efendioglu` | Review of gateway, security and end-to-end execution conditions (AC-04.1, AC-04.8, AC-04.9) | Reviewed — approved with two notes (PR #17 comment, 20 Nov 2026) |
 
 Only the work listed as done is claimed. Review rows become "Reviewed" when the reviewer has actually reviewed the section (PR review or written approval).
 
@@ -180,7 +180,7 @@ Criteria are numbered `AC-<UC>.<n>`. "How it is measured" names the observable t
 | AC-04.5 | No student identity in tool arguments | Arguments of every `tools/call` in the MCP log | No `studentId` (or any identity field) in any arguments; the course schedule is resolved from the gateway-verified identity | FR-06 (2), API Contract §1 "Tool identity" | Mandatory |
 | AC-04.6 | The answer is consistent with the tool results | Compare the final `done.answer` with the three tool results | The answer (a) uses the end time of the relevant class from `get_course_schedule`, (b) names a departure from `get_shuttle_schedule` that is later than that end time, or states that none exists, and (c) mentions at least one dish from `get_cafeteria_menu`, or the closed reason; it does not invent values absent from the results and indicates that the data is synthetic | FR-13 | Mandatory |
 | AC-04.7 | No raw token or PII reaches the LLM provider | Outbound provider request log / interception for the run | 0 occurrences of the raw JWT; 0 occurrences of the student ID, name or e-mail of the test user | FR-14, NFR-05 (3) | Mandatory |
-| AC-04.8 | The gateway terminates the token and ignores forged identity headers | Internal gateway → MCP/agent request log; request with a forged `X-Authenticated-Student-Id` header | No `Authorization` header on internal requests; a browser-supplied `X-Authenticated-*` header is removed and never changes whose schedule is returned | FR-07, API Contract §4 | Mandatory |
+| AC-04.8 | The gateway terminates the token and ignores forged identity headers, and the MCP server cannot be reached around the gateway | Internal gateway → MCP/agent request log; request with a forged `X-Authenticated-Student-Id` header; Compose port bindings of `mcp-server`; a direct request from the host to the MCP port with a forged header | No `Authorization` header on internal requests; a browser-supplied `X-Authenticated-*` header is removed and never changes whose schedule is returned; `mcp-server` publishes no port to the host (only the internal Compose network), so the direct request to `/mcp` cannot connect | FR-07, NFR-05, API Contract §1, §4 | Mandatory |
 | AC-04.9 | Invalid tokens are rejected | Chat or course-schedule request with an expired token and with a tampered token | HTTP 401 for both; no tool execution | FR-07 | Mandatory |
 | AC-04.10 | The answer is streamed | Browser view and SSE frames | First answer text rendered before the `done` event; `done` received exactly once with `isComplete = true` and `toolsInvoked` matching AC-04.4 | FR-17, API Contract §3.3 | Mandatory |
 | AC-04.11 | The real LLM provider was used | Agent configuration and provider log for the run | Requests went to the real Gemini provider (not the fake test provider) | API Contract §3.3, team guide §6 | Mandatory |
@@ -305,13 +305,13 @@ Each test lists preconditions, the test data, numbered steps with the expected o
 | 5 | Inspect the agent/MCP log for the run | Exactly three `tools/call` executions with the three tool names; no `studentId` or other identity field in any arguments | AC-04.4, AC-04.5 |
 | 6 | Compare `done.answer` with the three tool results from the log | Class end time, a later departure (or "none"), and a dish (or the closed reason) are all taken from the results; nothing invented; synthetic data indicated | AC-04.6 |
 | 7 | Inspect the outbound provider requests of the run | Real Gemini endpoint; 0 occurrences of the raw JWT, student ID, name or e-mail | AC-04.7, AC-04.11 |
-| 8 | Inspect internal gateway → MCP/agent requests; repeat step 3 with a forged `X-Authenticated-Student-Id` header added by the client | No `Authorization` header internally; the forged header is removed and the schedule in the answer still belongs to the logged-in student | AC-04.8 |
+| 8 | Inspect internal gateway → MCP/agent requests; repeat step 3 with a forged `X-Authenticated-Student-Id` header added by the client; check the `mcp-server` port bindings and send the direct MCP request from Appendix B from the host | No `Authorization` header internally; the forged header is removed and the schedule in the answer still belongs to the logged-in student; `mcp-server` has no host port binding and the direct request to `/mcp` fails to connect | AC-04.8 |
 | 9 | Repeat the chat request with an expired token, then with a tampered token | HTTP 401 for both; no tool executions logged | AC-04.9 |
 | 10 | *(Conditional)* If step 4 took more than 5 s, or in a repetition with network throttling | "Still processing" indicator after 5 s; cancel with retry at 20 s | AC-04.12 |
 
 **Pass/fail rule:** PASS if steps 1–9 show the expected observation with the real provider, and step 10 either passes or is `NOT RUN` because the response was faster than 5 s and no throttled repetition was made. A run with the fake provider, or in web `fixtures` mode, is reported as supporting evidence and the test status is `NOT RUN` or `FAIL`, never PASS (§2.5).
 
-**Evidence:** screenshots/video of steps 1–4; redacted SSE trace (frames `tool`, `token`, `done`); redacted agent/MCP log for steps 5 and 8; redacted outbound provider request log for step 7; HTTP responses for steps 1 and 9.
+**Evidence:** screenshots/video of steps 1–4; redacted SSE trace (frames `tool`, `token`, `done`); redacted agent/MCP log for steps 5 and 8; `mcp-server` port bindings (e.g. `docker compose ps` / `docker inspect`) and the failed direct request for step 8; redacted outbound provider request log for step 7; HTTP responses for steps 1 and 9.
 
 ---
 
@@ -358,7 +358,7 @@ Coverage check: every criterion in §3 is checked by at least one step, and ever
 | FR-17 | AC-04.4, AC-04.10 | AT-04 |
 | FR-18 | AC-01.1, AC-01.3, AC-02.1, AC-03.1 | AT-01, AT-02, AT-03 |
 | FR-19 | AC-02.5, AC-03.7, AC-04.12 (all conditional) | AT-02, AT-03, AT-04 |
-| NFR-05 (3) | AC-04.7 | AT-04 |
+| NFR-05 (3) | AC-04.7, AC-04.8 | AT-04 |
 | NFR-06 (3), NFR-07 | AC-01.8 | AT-01 |
 
 ### 6.2 Acceptance test → supporting verification tests
@@ -410,7 +410,7 @@ Estimates are planning values for Project Assignment 3. Actual hours are filled 
 | TSK-AT-05 | Correspondence and traceability (§5, §6), scope limits (§7) | Yunus Emre Biçer | Murat Can Işık | 0.20 | ≈ 0.17 | Draft done (v0.1) |
 | TSK-AT-06 | Review of data, cache and stale criteria | Arda Çelik | Yunus Emre Biçer | 0.10 | — | Requested |
 | TSK-AT-07 | Review of agent, MCP and streaming criteria | Murat Can Işık | Yunus Emre Biçer | 0.10 | — | Requested |
-| TSK-AT-08 | Review of gateway/security criteria and execution conditions | Ahmet Sefa Efendioğlu | Yunus Emre Biçer | 0.10 | — | Requested |
+| TSK-AT-08 | Review of gateway/security criteria and execution conditions | Ahmet Sefa Efendioğlu | Yunus Emre Biçer | 0.10 | — | Done (approved, PR #17 comment, 20 Nov 2026) |
 | TSK-AT-09 | Freeze v1.0 (26 Nov 2026) after reviews and UI completion | Yunus Emre Biçer | Entire team | 0.20 | — | Planned |
 | | **Total** | | | **2.00** | **≈ 1.00 so far** (4 of 9 tasks) | |
 
@@ -421,6 +421,7 @@ Estimates are planning values for Project Assignment 3. Actual hours are filled 
 | Version | Date | Updated section | Description of changes | Updated by |
 | :--- | :--- | :--- | :--- | :--- |
 | 0.1 | 19 Nov 2026 | All | First draft: approach, 34 acceptance criteria, AT-01..AT-04, correspondence, traceability, scope limits, task matrix | Yunus Emre Biçer |
+| 0.2 | 20 Nov 2026 | List of Contributors, §3.4 AC-04.8, §4.4 AT-04 step 8 and evidence, §6.1, §8, Appendix B | AC-04.8 extended to the MCP server not being reachable around the gateway (no host port binding for `mcp-server`; a direct `/mcp` request with a forged identity header from the host fails to connect), as suggested in Ahmet Sefa Efendioğlu's review; matching AT-04 step 8, evidence and direct request added; NFR-05 linked to AC-04.8; Sefa's review recorded as done. His second note (adding the gateway test suites to §6.2 and updating the S-01/S-03 status in §6.3) will be applied after his gateway branch is merged into `dev` | Yunus Emre Biçer |
 
 ---
 
@@ -468,6 +469,12 @@ curl -s -X POST http://localhost:3000/api/v1/query \
 curl -s -X POST http://localhost:3000/api/v1/query \
   -H "Content-Type: application/json" \
   -d '{"toolName":"get_course_schedule","parameters":{}}'
+
+# AT-04 step 8 — direct request to the MCP server around the gateway, with a forged identity
+# header, sent from the host (expect: connection fails, because mcp-server publishes no host port)
+curl -s --max-time 5 -X POST http://localhost:3001/mcp \
+  -H "Content-Type: application/json" -H "X-Authenticated-Student-Id: demo-student-02" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_course_schedule","arguments":{}}}'
 
 # AT-04 step 9 — chat with an expired or tampered token (expect 401)
 curl -s -X POST http://localhost:3000/api/v1/chat/stream \
