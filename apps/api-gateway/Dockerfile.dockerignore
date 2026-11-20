@@ -1,0 +1,28 @@
+# Build-context filter for apps/api-gateway/Dockerfile.
+# Context is the repository root; only shared and api-gateway sources enter build stages.
+
+**/node_modules
+**/dist
+**/coverage
+**/.next
+**/*.tsbuildinfo
+
+# Never copy local secrets or VCS history into the container image
+**/.env
+**/.env.*
+!**/.env.example
+
+.git
+.claude
+docs
+comparisons
+tests
+apps/api-gateway/tests
+apps/api-gateway/scripts
+apps/web/**
+!apps/web/package.json
+apps/mcp-server/**
+!apps/mcp-server/package.json
+packages/connectors/**
+!packages/connectors/package.json
+*.log
