@@ -8,11 +8,11 @@
 | **Assignment** | Project Assignment 3 — Deliverable 2: Acceptance Tests and Acceptance Criteria |
 | **Group Name** | Group-ASYM |
 | **Document Lead & Author** | **Yunus Emre Biçer** (241101009) — `@YunusEmre113` |
-| **Document Version / Date** | **Version 0.2 (draft for team review), 20 November 2026** — see §9 Change Record |
+| **Document Version / Date** | **Version 0.3 (draft for team review), 20 November 2026** — see §9 Change Record |
 | **Repository Filepath** | `docs/assignment3/Acceptance_Tests_and_Criteria.md` |
 | **Related Documents** | `docs/Requirements_Document.md` (FR/NFR IDs), `docs/Design_Document.md` §3 (UC-01..UC-04), `docs/QA_Plan.md` (TC-01..TC-08), API Contract v1.1 (to be committed as `docs/assignment3/contracts/API_CONTRACT.md`), `docs/assignment3/Deployment_Plan.md` and `docs/assignment3/Test_Results_Report.md` (both in preparation, lead: Ahmet Sefa Efendioğlu) |
 
-> **Status of this draft.** This document defines *how* the four selected scenarios will be accepted and *what* counts as a pass. It does **not** contain test results: actual results, dates, commit SHAs and logs are recorded only in the Test Results Report after the tests are executed. Steps for screens that are not built yet (login, chat) are written at the level of observable behaviour and will be made concrete before the planned freeze on 26 November 2026.
+> **Status of this draft.** This document defines *how* the four selected scenarios will be accepted and *what* counts as a pass. It does **not** contain test results: actual results, dates, commit SHAs and logs are recorded only in the Test Results Report after the tests are executed. Steps for the chat screen, which is not built yet, are written at the level of observable behaviour and will be made concrete before the planned freeze on 26 November 2026.
 
 ## List of Contributors
 
@@ -208,7 +208,7 @@ Each test lists preconditions, the test data, numbered steps with the expected o
 | Field | Value |
 | :--- | :--- |
 | **Use case / requirements** | UC-01 / FR-01, FR-03, FR-09, FR-12, FR-15, FR-16, FR-18; NFR-06 (3), NFR-07 |
-| **Supporting tests** | TC-01, TC-05; `apps/web/tests/gatewayClient.test.ts`, `apps/web/tests/routeStudentQuery*.test.ts`, `tests/connectors/mockConnectors.test.ts` |
+| **Supporting tests** | TC-01, TC-05; `apps/web/tests/gatewayClient.test.ts`, `apps/web/tests/routeStudentQuery*.test.ts`, `apps/api-gateway/tests/queryProxy.test.ts`, `tests/mcp-server/httpConnectors.test.ts`, `tests/connectors/mockConnectors.test.ts` |
 | **Actor** | Guest user |
 | **Level** | System / acceptance (validation) |
 | **Responsibilities** | UI evidence: Yunus Emre Biçer · data and cache evidence: Arda Çelik · end-to-end execution: Ahmet Sefa Efendioğlu |
@@ -236,7 +236,7 @@ Each test lists preconditions, the test data, numbered steps with the expected o
 | Field | Value |
 | :--- | :--- |
 | **Use case / requirements** | UC-02 / FR-01, FR-04, FR-09, FR-12, FR-16, FR-18, FR-19 |
-| **Supporting tests** | TC-02, TC-05; `apps/web/tests/gatewayClient.test.ts`, `tests/connectors/mockConnectors.test.ts` |
+| **Supporting tests** | TC-02, TC-05; `apps/web/tests/gatewayClient.test.ts`, `apps/api-gateway/tests/queryProxy.test.ts`, `tests/mcp-server/httpConnectors.test.ts`, `tests/connectors/mockConnectors.test.ts` |
 | **Actor** | Guest user |
 | **Level** | System / acceptance (validation) |
 | **Responsibilities** | UI evidence: Yunus Emre Biçer · data and cache evidence: Arda Çelik · end-to-end execution: Ahmet Sefa Efendioğlu |
@@ -263,7 +263,7 @@ Each test lists preconditions, the test data, numbered steps with the expected o
 | Field | Value |
 | :--- | :--- |
 | **Use case / requirements** | UC-03 / FR-01, FR-05, FR-09, FR-10, FR-12, FR-16, FR-18, FR-19 |
-| **Supporting tests** | TC-03, TC-05, TC-06; `apps/web/tests/gatewayClient.test.ts`, `tests/connectors/resilientExecutor.test.ts` |
+| **Supporting tests** | TC-03, TC-05, TC-06; `apps/web/tests/gatewayClient.test.ts`, `apps/api-gateway/tests/queryProxy.test.ts`, `tests/mcp-server/httpConnectors.test.ts`, `tests/connectors/resilientExecutor.test.ts` |
 | **Actor** | Guest user |
 | **Level** | System / acceptance (validation) |
 | **Responsibilities** | UI evidence: Yunus Emre Biçer · data, cache and fault-injection evidence: Arda Çelik · end-to-end execution: Ahmet Sefa Efendioğlu |
@@ -289,7 +289,7 @@ Each test lists preconditions, the test data, numbered steps with the expected o
 | Field | Value |
 | :--- | :--- |
 | **Use case / requirements** | UC-04 / FR-01, FR-06, FR-07, FR-13, FR-14, FR-15, FR-16, FR-17, FR-19; NFR-05 |
-| **Supporting tests** | TC-04, TC-05, TC-07, TC-08; `apps/api-gateway/tests/jwtAuth.test.ts`, `tests/mcp-server/dispatcher.test.ts`, agent and PII-scrubber tests (planned, M-04/M-06) |
+| **Supporting tests** | TC-04, TC-05, TC-07, TC-08; `apps/api-gateway/tests/jwtAuth.test.ts`, `apps/api-gateway/tests/queryProxy.test.ts`, `apps/api-gateway/tests/chatStreamProxy.test.ts`, `apps/api-gateway/tests/deploymentConfig.test.ts`, `apps/web/tests/auth.test.ts`, `apps/web/tests/chatStreamClient.test.ts`, `tests/mcp-server/dispatcher.test.ts`; agent and PII-scrubber tests (planned, M-04/M-06) |
 | **Actor** | Authenticated synthetic student |
 | **Level** | System / acceptance (validation) |
 | **Responsibilities** | Agent and tool-call evidence: Murat Can Işık · chat UI evidence: Yunus Emre Biçer · schedule data: Arda Çelik · authentication, security checks and end-to-end execution: Ahmet Sefa Efendioğlu |
@@ -299,7 +299,7 @@ Each test lists preconditions, the test data, numbered steps with the expected o
 | Step | Action | Expected observation | Checks |
 | :---: | :--- | :--- | :--- |
 | 1 | As a guest, send the guest course-schedule request from Appendix B; open "Asistan" | HTTP 401 `AUTHENTICATION_REQUIRED`; assistant shows the login requirement; no chat request can be sent | AC-04.1 |
-| 2 | Log in with the synthetic student | Session indicator shows the synthetic student; assistant input enabled | AC-04.2 |
+| 2 | Press "Giriş yap", select "Demo Öğrenci 1" (`demo-student-01`) on the login page and press "Giriş yap" | Redirected back to "Asistan"; the header shows "Demo Öğrenci 1", the student number and "Çıkış"; assistant input enabled | AC-04.2 |
 | 3 | Enter the test question and send it | Router decision `LLM_AGENT` (`COMPOUND_QUERY`); exactly one `POST /api/v1/chat/stream` | AC-04.3 |
 | 4 | Watch the answer arrive | Answer text appears before the stream ends; three tool badges appear, one per tool, each with status and duration; `done` arrives once with `isComplete = true` | AC-04.4, AC-04.10 |
 | 5 | Inspect the agent/MCP log for the run | Exactly three `tools/call` executions with the three tool names; no `studentId` or other identity field in any arguments | AC-04.4, AC-04.5 |
@@ -365,19 +365,21 @@ Coverage check: every criterion in §3 is checked by at least one step, and ever
 
 | Acceptance test | QA Plan test cases | Automated suites (repository paths) |
 | :--- | :--- | :--- |
-| AT-01 | TC-01, TC-05 | `apps/web/tests/routeStudentQuery.test.ts`, `apps/web/tests/routeStudentQuery.heldout.test.ts`, `apps/web/tests/gatewayClient.test.ts`, `tests/connectors/mockConnectors.test.ts`, `tests/connectors/cacheStores.test.ts` |
-| AT-02 | TC-02, TC-05 | same router and client suites, `tests/connectors/mockConnectors.test.ts` |
-| AT-03 | TC-03, TC-05, TC-06 | same router and client suites, `tests/connectors/resilientExecutor.test.ts`, `tests/connectors/circuitBreaker.test.ts` |
-| AT-04 | TC-04, TC-05, TC-07, TC-08 | `apps/api-gateway/tests/jwtAuth.test.ts`, `tests/mcp-server/dispatcher.test.ts`, `tests/connectors/dispatcherIntegration.test.ts`; agent, PII-scrubber and chat-stream tests are planned (M-04, M-06, Y-07/Y-09) |
+| AT-01 | TC-01, TC-05 | `apps/web/tests/routeStudentQuery.test.ts`, `apps/web/tests/routeStudentQuery.heldout.test.ts`, `apps/web/tests/gatewayClient.test.ts`, `apps/web/tests/auth.test.ts` (guest access), `apps/api-gateway/tests/queryProxy.test.ts` (public tools for guests, `-32602` → 400, metadata preserved), `tests/mcp-server/httpConnectors.test.ts` (tools served by the connector runtime with full metadata, second identical call from cache, invalid parameters → `-32602`), `tests/connectors/mockConnectors.test.ts`, `tests/connectors/cacheStores.test.ts` |
+| AT-02 | TC-02, TC-05 | same router, client, query-proxy and MCP suites, `tests/connectors/mockConnectors.test.ts` |
+| AT-03 | TC-03, TC-05, TC-06 | same router, client, query-proxy and MCP suites (incl. `STALE` metadata and original timestamp preserved by the gateway), `tests/connectors/resilientExecutor.test.ts`, `tests/connectors/circuitBreaker.test.ts` |
+| AT-04 | TC-04, TC-05, TC-07, TC-08 | `apps/api-gateway/tests/jwtAuth.test.ts` (token termination, expired / tampered tokens, spoofed `X-Authenticated-*`), `apps/api-gateway/tests/queryProxy.test.ts` (guest course schedule 401, `studentId` injection 400), `apps/api-gateway/tests/chatStreamProxy.test.ts` (chat 401 / 400, SSE passthrough without `Authorization`, safe post-header `error`), `apps/api-gateway/tests/deploymentConfig.test.ts` (internal network for `mcp-server` and `redis`, AC-04.8), `apps/web/tests/auth.test.ts`, `apps/web/tests/sseParser.test.ts`, `apps/web/tests/chatStreamClient.test.ts`, `tests/mcp-server/dispatcher.test.ts`, `tests/mcp-server/httpConnectors.test.ts` (private tool without verified identity → 401), `tests/connectors/dispatcherIntegration.test.ts`; agent and PII-scrubber tests are planned (M-04, M-06) |
+| All | — | `apps/api-gateway/tests/rateLimiter.test.ts` (FR-08: 31st request → 429 with `Retry-After`); not an acceptance criterion of AT-01..AT-04, but it limits how often an acceptance run may repeat requests |
 
-`gatewayClient.test.ts` is part of PR #16 (open at the time of writing).
+All paths above exist on `dev` (checked at `4f66b28`, 20 Nov 2026).
 
 ### 6.3 Acceptance test → implementing components
 
 | Acceptance test | Web client | Gateway | MCP / agent | Connectors |
 | :--- | :--- | :--- | :--- | :--- |
-| AT-01..AT-03 | `apps/web/src/router/routeStudentQuery.ts`; `apps/web/src/lib/gateway/` and `apps/web/src/components/cards/` (PR #16) | `apps/api-gateway/src/server.ts` — `/api/v1/query` real MCP proxy **planned (S-01)** | `apps/mcp-server/src/server.ts`, `ToolDispatcher`; switch from sample handlers to connector handlers **planned (M-02)** | `packages/connectors/src/handlers.ts`, mock connectors, cache, resilience |
-| AT-04 | assistant page `apps/web/src/app/asistan/`; login and SSE chat client **planned (Y-07, Y-08, Y-09)** | mock login and JWT verification implemented; `/api/v1/chat/stream` **planned (S-03)** | `apps/mcp-server/src/agent/AgentOrchestrator.ts` — multi-tool execution **planned (M-04)**; PII scrubber **planned (M-06)** | course schedule connector and handlers |
+| AT-01..AT-03 | `apps/web/src/router/routeStudentQuery.ts`, `apps/web/src/lib/gateway/`, `apps/web/src/components/cards/` — **implemented** | `apps/api-gateway/src/proxy/mcpProxy.ts` — `/api/v1/query` real MCP proxy **implemented (S-01)**; rate limiter with Redis store (S-04) | `apps/mcp-server/src/server.ts`, `ToolDispatcher`, `src/wire/jsonRpc.ts`; tools backed by the connector runtime **implemented (M-02)**, contract-shaped results and JSON-RPC errors **implemented (M-01, M-03)** | `packages/connectors/src/handlers.ts`, mock connectors, resilience; cache currently `InMemoryCacheStore` — Redis-backed cache **planned (A-02)** |
+| AT-04 | login and session `apps/web/src/lib/auth/`, `src/components/SessionProvider.tsx`, `src/app/giris/` — **implemented**; SSE chat client `apps/web/src/lib/chat/` — **implemented**; chat UI on `apps/web/src/app/asistan/` **planned (Y-07)** | mock login, JWT verification and token termination implemented; `apps/api-gateway/src/proxy/chatStreamProxy.ts` — `/api/v1/chat/stream` **implemented (S-03)** | `apps/mcp-server/src/agent/AgentOrchestrator.ts` — multi-tool execution **planned (M-04)**; PII scrubber **planned (M-06)**; `/internal/agent/stream` endpoint **planned (M-08)** | course schedule connector and handlers |
+| Deployment | `apps/web/Dockerfile` (web image, `/healthz`) — **implemented** | `apps/api-gateway/Dockerfile`, `compose.yaml` (web, gateway, Redis; `mcp-server` service waiting for its Dockerfile, M-13) — **implemented** | — | — |
 
 ---
 
@@ -388,7 +390,9 @@ Coverage check: every criterion in §3 is checked by at least one step, and ever
 | FR-18 card D (connector health) | Not implemented in PA3: the API contract has no endpoint for it and no acceptance test needs it (team decision, 19 Nov 2026). `checkConnectorHealth()` exists in `packages/connectors` for later use | Not tested by AT-01..AT-03; listed as a requirement gap in the Test Results Report |
 | FR-18 "clicking a card fills the chat input" | Not implemented yet; the dashboard offers example questions instead | Not part of the acceptance criteria; listed as a gap |
 | Real campus data | Not available; all connectors in mock mode (§2.2) | Criteria check synthetic data consistency and labelling only |
-| Gateway proxy, chat stream, agent, login, chat UI | Planned (S-01, S-03, M-02, M-04, M-06, Y-07, Y-08) | AT-01..AT-03 cannot run end to end before S-01 and M-02; AT-04 before S-03, M-04, Y-07, Y-08 |
+| Gateway query and chat proxies, login, MCP connector wiring | Implemented and merged into `dev` (S-01, S-03, Y-08, M-02; 20 Nov 2026) | AT-01..AT-03 can now run end to end |
+| Redis-backed tool cache | Planned (A-02); the connector runtime uses `InMemoryCacheStore` until then | Cache checks AC-01.7, AC-02.7, AC-03.6 run against the in-memory store; the execution record must state which store was used. FR-09's Redis requirement is reported separately |
+| Agent, PII scrubber, agent stream endpoint, chat UI | Planned (M-04, M-06, M-08, Y-07) | AT-04 cannot run end to end before all four exist |
 | Settable test clock (`CONNECTOR_FIXED_NOW`) | Proposed (API Contract v1.1 §8 Q3) | AC-02.5 is conditional on it; other time-dependent checks use the recorded execution time if it is missing |
 | Fault injection in the demo deployment | Not yet defined | AC-03.7 is conditional; TC-06 remains the supporting evidence |
 | NFR-01, NFR-02, NFR-06 (1, 2), FR-13 benchmark | Outside the acceptance decision (§3.5) | Reported separately or as not measured |
@@ -422,6 +426,7 @@ Estimates are planning values for Project Assignment 3. Actual hours are filled 
 | :--- | :--- | :--- | :--- | :--- |
 | 0.1 | 19 Nov 2026 | All | First draft: approach, 34 acceptance criteria, AT-01..AT-04, correspondence, traceability, scope limits, task matrix | Yunus Emre Biçer |
 | 0.2 | 20 Nov 2026 | List of Contributors, §3.4 AC-04.8, §4.4 AT-04 step 8 and evidence, §6.1, §8, Appendix B | AC-04.8 extended to the MCP server not being reachable around the gateway (no host port binding for `mcp-server`; a direct `/mcp` request with a forged identity header from the host fails to connect), as suggested in Ahmet Sefa Efendioğlu's review; matching AT-04 step 8, evidence and direct request added; NFR-05 linked to AC-04.8; Sefa's review recorded as done. His second note (adding the gateway test suites to §6.2 and updating the S-01/S-03 status in §6.3) will be applied after his gateway branch is merged into `dev` | Yunus Emre Biçer |
+| 0.3 | 20 Nov 2026 | Status note, §4.1–4.4 supporting tests, AT-04 step 2, §6.2, §6.3, §7 | Applied the second note of Ahmet Sefa Efendioğlu's review after PR #22 was merged: gateway suites (`queryProxy`, `chatStreamProxy`, `rateLimiter`, `deploymentConfig`) added to §6.2 and the AT tables; S-01 / S-03 marked implemented in §6.3. Also brought the document in line with `dev` at `4f66b28`: login (PR #20), web data cards and chat client implemented; MCP backed by the connector runtime (PR #26, M-01/M-02/M-03) with `tests/mcp-server/httpConnectors.test.ts`; cache still in-memory until A-02; deployment row added. AT-04 step 2 made concrete for the implemented login page. All referenced `dev` paths re-checked | Yunus Emre Biçer |
 
 ---
 
