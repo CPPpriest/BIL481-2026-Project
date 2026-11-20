@@ -1,19 +1,14 @@
 /**
  * =============================================================================
- * TEMPORARY SAMPLE MOCK HANDLERS (PHASE 2 - SKELETON DEMONSTRATION)
+ * DEPRECATED SAMPLE MOCK HANDLERS (PHASE 2 SKELETON - TEST-ONLY)
  * =============================================================================
  * NOTICE:
- * These mock handlers provide temporary, deterministic data fixtures for
- * demonstrating the core MCP Server and verifying JSON-RPC 2.0 protocol compliance
- * before the connector and caching subsystems are integrated.
+ * The MCP server no longer registers these handlers by default. Since PA3 (M-02) the four
+ * tools are backed by `@campus-orchestrator/connectors` (`createConnectorRuntime` +
+ * `registerConnectorHandlers`: TTL cache, stale-if-error, circuit breaker, mock/live modes).
  *
- * During Phase 3 (Core Development, 21 Nov - 25 Dec 2026):
- * These mock handlers will be completely replaced by Arda's official
- * `packages/connectors` implementations and wired to:
- * - Redis TTL caching layer (FR-09)
- * - Automated stale-if-error fallback mechanism (FR-10)
- * - Isolated connector circuit breaking (FR-11)
- * - Hot-swappable mock/live connector modes (FR-12)
+ * These fixtures remain only for the Phase 2 unit tests and legacy verification scripts, and
+ * are opt-in via `createCampusMcpServer(dispatcher, { registerSampleMocks: true })`.
  * =============================================================================
  */
 

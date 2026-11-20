@@ -11,15 +11,26 @@ import {
   ToolDispatcher,
   AuthenticationRequiredError,
 } from './dispatcher/ToolDispatcher.js';
+import { buildToolCallOutcome } from './wire/jsonRpc.js';
 import { registerSampleMockHandlers } from './mocks/sampleMockHandlers.js';
+import {
+  createConnectorRuntime,
+  registerConnectorHandlers,
+  type ConnectorRuntime,
+} from '@campus-orchestrator/connectors';
 
 export interface CampusMcpServerOptions {
   serverInfo?: { name: string; version: string };
   /**
-   * If true, automatically registers temporary Phase 2 sample mock handlers
-   * if no handler is already registered. Defaults to true.
+   * If true, registers the deprecated Phase 2 sample mock handlers instead of the connector
+   * runtime. Test-only; defaults to false.
    */
   registerSampleMocks?: boolean;
+  /**
+   * Connector runtime (connectors + TTL cache + stale-if-error + circuit breaker) backing the
+   * four tools. Defaults to `createConnectorRuntime()` reading `process.env` (M-02).
+   */
+  connectorRuntime?: ConnectorRuntime;
 }
 
 /**
@@ -41,9 +52,13 @@ export function createCampusMcpServer(
     version: '1.0.0',
   };
 
-  // Register temporary mock handlers for Phase 2 demonstration if requested
-  if (options.registerSampleMocks ?? true) {
+  // Tools are backed by packages/connectors; sample mocks are opt-in (test-only).
+  let connectorRuntime: ConnectorRuntime | undefined;
+  if (options.registerSampleMocks ?? false) {
     registerSampleMockHandlers(dispatcher);
+  } else {
+    connectorRuntime = options.connectorRuntime ?? createConnectorRuntime();
+    registerConnectorHandlers(dispatcher, connectorRuntime);
   }
 
   const server = new Server(serverInfo, {
@@ -73,18 +88,14 @@ export function createCampusMcpServer(
     };
 
     try {
-      const result = await dispatcher.dispatch(name, args, authContext);
+      const outcome = buildToolCallOutcome(await dispatcher.dispatch(name, args, authContext));
 
-      if (result.isError && result.code === -32602) {
-        throw new McpError(ErrorCode.InvalidParams, result.message ?? 'Invalid params');
+      if (outcome.kind === 'protocol-error') {
+        const code = outcome.error.code === -32601 ? ErrorCode.MethodNotFound : ErrorCode.InvalidParams;
+        throw new McpError(code, outcome.error.message);
       }
 
-      return {
-        content: Array.isArray(result.content)
-          ? (result.content as any)
-          : [{ type: 'json', data: result.content }],
-        isError: result.isError,
-      };
+      return outcome.result as any;
     } catch (err: unknown) {
       if (err instanceof AuthenticationRequiredError) {
         throw new McpError(ErrorCode.InvalidRequest, err.message);
@@ -97,5 +108,5 @@ export function createCampusMcpServer(
     }
   });
 
-  return { server, dispatcher };
+  return { server, dispatcher, connectorRuntime };
 }

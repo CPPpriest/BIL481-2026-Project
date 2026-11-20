@@ -17,6 +17,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      '@campus-orchestrator/connectors': path.resolve(__dirname, 'packages/connectors/src/index.ts'),
       '@campus-orchestrator/shared': path.resolve(__dirname, 'packages/shared/src/index.ts'),
       '@campus-orchestrator/mcp-server': path.resolve(__dirname, 'apps/mcp-server/src/index.ts'),
     },
