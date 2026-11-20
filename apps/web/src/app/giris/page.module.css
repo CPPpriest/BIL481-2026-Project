@@ -1,0 +1,17 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 1.75rem;
+  line-height: 1.2;
+}
+
+.lead {
+  margin: 0;
+  max-width: 65ch;
+  color: var(--color-text-muted);
+}

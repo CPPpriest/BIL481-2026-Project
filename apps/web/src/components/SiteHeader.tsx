@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession } from './SessionProvider';
 import styles from './SiteHeader.module.css';
 
 const NAV_ITEMS = [
@@ -10,12 +11,13 @@ const NAV_ITEMS = [
 ] as const;
 
 /**
- * Top navigation shared by every page. The session area is a placeholder
- * until mock-SSO login is wired in (task Y-08, FR-15); until then the user is
- * always shown as a guest.
+ * Top navigation shared by every page, with the session area of FR-15:
+ * a login link for guests, and the synthetic student's name, student number
+ * and a one-click sign-out once logged in.
  */
 export function SiteHeader() {
   const pathname = usePathname();
+  const { state, logout } = useSession();
 
   return (
     <header className={styles.header}>
@@ -41,8 +43,27 @@ export function SiteHeader() {
             })}
           </ul>
         </nav>
-        <div className={styles.session} aria-label="Oturum durumu">
-          <span className={styles.guest}>Misafir</span>
+        <div className={styles.session} aria-label="Oturum durumu" aria-live="polite">
+          {state.status === 'authenticated' ? (
+            <>
+              <span className={styles.user}>
+                <span className={styles.userName}>{state.session.user.name}</span>
+                <span className={styles.userId}>No: {state.session.user.studentId}</span>
+              </span>
+              <button type="button" className={styles.logout} onClick={logout}>
+                Çıkış
+              </button>
+            </>
+          ) : state.status === 'guest' ? (
+            <>
+              <span className={styles.guest}>Misafir</span>
+              {!pathname.startsWith('/giris') && (
+                <Link href={`/giris?next=${encodeURIComponent(pathname)}`} className={styles.login}>
+                  Giriş yap
+                </Link>
+              )}
+            </>
+          ) : null}
         </div>
       </div>
     </header>
