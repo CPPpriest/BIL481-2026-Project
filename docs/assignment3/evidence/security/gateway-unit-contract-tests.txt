@@ -1,0 +1,131 @@
+﻿========================================================================
+Campus Data Orchestrator — API Gateway Unit, Contract & Stub Verification
+========================================================================
+DISCLAIMER: Supporting gateway verification ONLY (in-process HTTP stubs /
+mock RESP server). This is NOT a real E2E acceptance test (AT-01..AT-04).
+Real AT-01..AT-04 remain NOT RUN (BLOCKED) pending teammate integrations.
+------------------------------------------------------------------------
+Recorded At (UTC+3): 2026-11-20T12:29:59+03:00
+Branch: feat/pa3-gateway-release
+Base Commit SHA: 6ae34efe458605cb5b92567b72389b77dfef3274
+Node.js: v26.4.0
+npm: 11.17.0
+OS: Windows (sandboxed workspace verification)
+========================================================================
+
+## 1. npx vitest run apps/api-gateway/tests/ 
+
+ RUN  v5.1.0 C:/Users/HP/Desktop/481 as/BIL481-2026-Project
+
+ ✓ apps/api-gateway/tests/deploymentConfig.test.ts (3 tests) 5ms
+ ✓ apps/api-gateway/tests/jwtAuth.test.ts (8 tests) 92ms
+stderr | apps/api-gateway/tests/rateLimiter.test.ts > Sliding-Window Rate Limiter & Redis Store (S-04, FR-08) > should communicate with a RESP2 TCP server via RespTcpRedisClient and failOpen cleanly when unreachable
+[API Gateway] Redis rate limiter error (using fallback): connect ECONNREFUSED 127.0.0.1:1
+
+stderr | apps/api-gateway/tests/rateLimiter.test.ts > Sliding-Window Rate Limiter & Redis Store (S-04, FR-08) > should communicate with a RESP2 TCP server via RespTcpRedisClient and failOpen cleanly when unreachable
+[API Gateway] Redis rate limiter error (using fallback): connect ECONNREFUSED 127.0.0.1:1
+
+ ✓ apps/api-gateway/tests/rateLimiter.test.ts (3 tests) 234ms
+ ✓ apps/api-gateway/tests/queryProxy.test.ts (6 tests) 374ms
+ ✓ apps/api-gateway/tests/chatStreamProxy.test.ts (5 tests) 551ms
+   ✓ POST /api/v1/chat/stream SSE Proxy (S-03, API Contract v1.1 §3.3) (5)
+     ✓ should map pre-stream upstream failures (503, 429, 504, 502) to Contract §3.4 JSON 434ms
+
+ Test Files  5 passed (5)
+      Tests  25 passed (25)
+   Start at  12:30:01
+   Duration  1.34s (import 59%, tests 34%, transform 5%, worker 2%)
+
+ 
+## 2. npx vitest run (full monorepo suite) 
+
+ RUN  v5.1.0 C:/Users/HP/Desktop/481 as/BIL481-2026-Project
+
+ ✓ apps/web/tests/gatewayClient.test.ts (18 tests) 92ms
+ ✓ apps/web/tests/chatStreamClient.test.ts (15 tests) 205ms
+ ✓ apps/web/tests/routeStudentQuery.test.ts (45 tests) 16ms
+ ✓ tests/connectors/circuitBreaker.test.ts (6 tests) 10ms
+ ✓ tests/connectors/cacheStores.test.ts (8 tests) 12ms
+ ✓ tests/connectors/redisVsMemory.demo.test.ts (2 tests) 11ms
+ ✓ tests/connectors/configAndFactory.test.ts (7 tests) 14ms
+ ✓ tests/connectors/resilientExecutor.test.ts (12 tests) 73ms
+ ✓ apps/web/tests/sseParser.test.ts (9 tests) 10ms
+ ✓ tests/connectors/mockConnectors.test.ts (28 tests) 118ms
+stdout | apps/web/tests/routeStudentQuery.heldout.test.ts > routeStudentQuery held-out evaluation (Y-01, FR-16) > reports accuracy, confusion matrix and misrouted queries
+
+[FR-16 held-out report]
+Corpus size: 40
+Accuracy: 100.0 % (40/40)
+Compound -> agent: 10/10
+
+expected \ predicted | CAFETERIA | SHUTTLE | LIBRARY | AGENT
+CAFETERIA | 8 | 0 | 0 | 0
+SHUTTLE | 0 | 8 | 0 | 0
+LIBRARY | 0 | 0 | 8 | 0
+AGENT | 0 | 0 | 0 | 16
+
+Misrouted: none
+
+
+stdout | apps/web/tests/routeStudentQuery.heldout.test.ts > routeStudentQuery validation evaluation (Y-01, FR-16) > reports accuracy, confusion matrix and misrouted queries
+
+[FR-16 validation report]
+Corpus size: 20
+Accuracy: 100.0 % (20/20)
+Compound -> agent: 4/4
+
+expected \ predicted | CAFETERIA | SHUTTLE | LIBRARY | AGENT
+CAFETERIA | 4 | 0 | 0 | 0
+SHUTTLE | 0 | 4 | 0 | 0
+LIBRARY | 0 | 0 | 4 | 0
+AGENT | 0 | 0 | 0 | 8
+
+Misrouted: none
+
+
+ ✓ apps/web/tests/routeStudentQuery.heldout.test.ts (6 tests) 7ms
+ ✓ apps/web/tests/format.test.ts (5 tests) 8ms
+ ✓ apps/api-gateway/tests/deploymentConfig.test.ts (3 tests) 7ms
+ ✓ tests/mcp-server/dispatcher.test.ts (18 tests) 21ms
+ ✓ apps/api-gateway/tests/jwtAuth.test.ts (8 tests) 139ms
+ ✓ tests/connectors/dispatcherIntegration.test.ts (13 tests) 14ms
+stderr | apps/api-gateway/tests/rateLimiter.test.ts > Sliding-Window Rate Limiter & Redis Store (S-04, FR-08) > should communicate with a RESP2 TCP server via RespTcpRedisClient and failOpen cleanly when unreachable
+[API Gateway] Redis rate limiter error (using fallback): connect ECONNREFUSED 127.0.0.1:1
+
+stderr | apps/api-gateway/tests/rateLimiter.test.ts > Sliding-Window Rate Limiter & Redis Store (S-04, FR-08) > should communicate with a RESP2 TCP server via RespTcpRedisClient and failOpen cleanly when unreachable
+[API Gateway] Redis rate limiter error (using fallback): connect ECONNREFUSED 127.0.0.1:1
+
+ ✓ apps/api-gateway/tests/rateLimiter.test.ts (3 tests) 308ms
+ ✓ apps/api-gateway/tests/queryProxy.test.ts (6 tests) 445ms
+ ✓ apps/api-gateway/tests/chatStreamProxy.test.ts (5 tests) 608ms
+   ✓ POST /api/v1/chat/stream SSE Proxy (S-03, API Contract v1.1 §3.3) (5)
+     ✓ should map pre-stream upstream failures (503, 429, 504, 502) to Contract §3.4 JSON 456ms
+
+ Test Files  19 passed (19)
+      Tests  217 passed (217)
+   Start at  12:30:05
+   Duration  1.96s (import 58%, tests 20%, transform 17%, worker 6%)
+
+ 
+## 3. node apps/api-gateway/scripts/run-acceptance-harness.mjs --mode=stub-self-test 
+========================================================================
+Gateway Verification Harness — mode=stub-self-test
+Executed at: 2026-11-20T09:30:07.908Z
+NOTICE: STUB_VERIFICATION_ONLY — Uses in-process fake MCP & Agent SSE.
+        This verifies gateway contract/auth/SSE proxy only, NOT real AT-01..AT-04.
+========================================================================
+[PASS] GATEWAY_HEALTH — HTTP 200 (api-gateway)
+[PASS] UC-01_PUBLIC_QUERY — source=LIVE, isSimulated=true
+[PASS] UC-02_PUBLIC_QUERY — route=MAIN_RING, source=CACHE_HIT
+[PASS] UC-02_INVALID_ROUTE — HTTP 400 INVALID_PARAMS
+[PASS] UC-03_PUBLIC_QUERY — source=STALE, isStale=true
+[PASS] SEC_GUEST_COURSE_DENIED — HTTP 401 AUTHENTICATION_REQUIRED
+[PASS] SEC_GUEST_CHAT_DENIED — HTTP 401 AUTHENTICATION_REQUIRED
+[PASS] MOCK_LOGIN — token=eyJhbGci...<redacted>, studentId=demo-student-01
+[PASS] SEC_STUDENT_ID_INJECTION_BLOCKED — HTTP 400 INVALID_PARAMS
+[PASS] AUTH_COURSE_SCHEDULE — entries=1
+[PASS] UC-04_CHAT_SSE_STREAM — received 476 bytes of SSE frames
+[PASS] SEC_TOKEN_TERMINATION — 0 Authorization headers across 6 downstream calls
+========================================================================
+RESULT: STUB_SELF_TEST_PASSED (gateway-only; real E2E AT-01..AT-04 remain BLOCKED)
+========================================================================
