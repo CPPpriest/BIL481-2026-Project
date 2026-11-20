@@ -1,3 +1,7 @@
+import type { GatewayErrorBody, GatewayErrorCode } from '../http/errorResponse.js';
+
+export type { GatewayErrorBody, GatewayErrorCode };
+
 /**
  * User Identity Roles supported by Campus Data Orchestrator
  */
@@ -7,7 +11,7 @@ export type UserRole = 'STUDENT' | 'FACULTY' | 'GUEST' | 'ADMIN';
  * Verified JWT Payload issued by Mock-SSO Authority (FR-07)
  */
 export interface JWTPayload {
-  /** Subject: Unique Student or Staff ID (e.g. '241101066') */
+  /** Subject: Unique Student or Staff ID (e.g. 'demo-student-01' or '241101066') */
   sub: string;
   /** Full Name of user */
   name: string;
@@ -49,13 +53,6 @@ export interface RateLimitPolicy {
 }
 
 /**
- * Standard Gateway Error Response Structure
+ * Standard Gateway Error Response Structure (API Contract v1.1 §3.4)
  */
-export interface GatewayErrorResponse {
-  statusCode: number;
-  error: string;
-  message: string;
-  timestamp: string;
-  retryAfterSeconds?: number;
-}
-
+export type GatewayErrorResponse = GatewayErrorBody;

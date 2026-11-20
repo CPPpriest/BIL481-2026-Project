@@ -1,0 +1,128 @@
+# Campus Data Orchestrator — Local Demo Compose Topology (API Contract v1.1 §1, §7)
+#
+# Network Boundary:
+#   - `edge`: Host-published entrypoints (`web` on 3002, `api-gateway` on 3000).
+#   - `internal` (internal: true): Private backend network (`api-gateway`, `mcp-server`, `redis`).
+#     `web` cannot reach `mcp-server` or `redis` directly, and neither `mcp-server` nor `redis`
+#     publishes any ports to the host.
+#
+# Integration Status / Known Blockers:
+#   - `api-gateway`: Dockerfile ready (`apps/api-gateway/Dockerfile`, owner: Sefa).
+#   - `web`: Dockerfile & `/healthz` merged on `dev` (`PR #18`, `dc2da33`, owner: Yunus).
+#   - `mcp-server`: BLOCKED until Murat delivers `apps/mcp-server/Dockerfile` and `/internal/agent/stream` (`M-08`, `M-13`).
+
+networks:
+  edge:
+    driver: bridge
+  internal:
+    driver: bridge
+    internal: true
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - internal
+    # Intentionally NO `ports:` mapping — Redis must stay internal-only.
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # BLOCKED (Murat M-13): Requires apps/mcp-server/Dockerfile and real connector/agent wiring (M-02..M-08).
+  mcp-server:
+    build:
+      context: .
+      dockerfile: apps/mcp-server/Dockerfile
+    restart: unless-stopped
+    networks:
+      - internal
+    expose:
+      - "3001"
+    # Intentionally NO `ports:` mapping — direct public access to /mcp is a security bypass.
+    environment:
+      NODE_ENV: production
+      MCP_SERVER_PORT: "3001"
+      REDIS_URL: redis://redis:6379
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      CAFETERIA_CONNECTOR_MODE: ${CAFETERIA_CONNECTOR_MODE:-mock}
+      SHUTTLE_CONNECTOR_MODE: ${SHUTTLE_CONNECTOR_MODE:-mock}
+      LIBRARY_CONNECTOR_MODE: ${LIBRARY_CONNECTOR_MODE:-mock}
+      SCHEDULE_CONNECTOR_MODE: ${SCHEDULE_CONNECTOR_MODE:-mock}
+      UPSTREAM_TIMEOUT_MS: ${UPSTREAM_TIMEOUT_MS:-800}
+      CACHE_TTL_CAFETERIA: ${CACHE_TTL_CAFETERIA:-3600}
+      CACHE_TTL_SHUTTLE: ${CACHE_TTL_SHUTTLE:-120}
+      CACHE_TTL_LIBRARY: ${CACHE_TTL_LIBRARY:-60}
+      CACHE_TTL_COURSE_SCHEDULE: ${CACHE_TTL_COURSE_SCHEDULE:-300}
+      CONNECTOR_MOCK_SEED: ${CONNECTOR_MOCK_SEED:-481-FALL-2026}
+      CONNECTOR_FIXED_NOW: ${CONNECTOR_FIXED_NOW:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: apps/api-gateway/Dockerfile
+    restart: unless-stopped
+    networks:
+      - edge
+      - internal
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      GATEWAY_PORT: "3000"
+      HOST: 0.0.0.0
+      MCP_URL: http://mcp-server:3001/mcp
+      AGENT_STREAM_URL: http://mcp-server:3001/internal/agent/stream
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env before starting}
+      MOCK_SSO_ISSUER: ${MOCK_SSO_ISSUER:-campus-mock-sso}
+    depends_on:
+      redis:
+        condition: service_healthy
+      mcp-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # Ready on dev (Yunus PR #18 merged: apps/web/Dockerfile & /healthz; edge network only).
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        GATEWAY_URL: http://api-gateway:3000
+        NEXT_PUBLIC_WEB_DATA_SOURCE: gateway
+    restart: unless-stopped
+    networks:
+      - edge
+    ports:
+      - "3002:3002"
+    environment:
+      NODE_ENV: production
+      PORT: "3002"
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3002/healthz"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 10s

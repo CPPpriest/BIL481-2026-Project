@@ -8,10 +8,10 @@
 | **Assignment** | Project Assignment 2 (Design and Quality Assurance) |
 | **Group Name** | Group-ASYM |
 | **QA Lead & Primary Author** | **Ahmet Sefa Efendioğlu** (241101066) — `@Sefa-Efendioglu` |
-| **Contributors to this Document** | **Ahmet Sefa Efendioğlu** (Lead Author, QA Strategy, Metrics, Test Cases, Bug Tracking), **Murat Can Işık** (MCP & Agent Test Alignment), **Yunus Emre Biçer** (Frontend & Usability Test Alignment), **Arda Çelik** (Connector & Reliability Test Alignment) |
-| **Document Version / Date** | Version 1.0 (Final Deliverable), 15 November 2026 |
+| **Contributors to this Document** | **Ahmet Sefa Efendioğlu** (Lead Author, QA Strategy, Metrics, Test Cases, V&V Alignment, Bug Tracking), **Murat Can Işık** (MCP & Agent Test Alignment), **Yunus Emre Biçer** (Frontend, Usability & AT Test Alignment), **Arda Çelik** (Connector & Reliability Test Alignment) |
+| **Document Version / Date** | Version 1.3 (PA3 V&V + 3-Service Compose Verification), 20 November 2026 *(v1.0 PA2 baseline: 15 November 2026)* |
 | **Repository Filepath** | `docs/QA_Plan.md` |
-| **Related Documents** | `docs/Requirements_Document.md`, `docs/Project_Plan_Document.md`, `docs/Design_Document.md` |
+| **Related Documents** | `docs/Requirements_Document.md`, `docs/Project_Plan_Document.md`, `docs/Design_Document.md`, `docs/assignment3/Acceptance_Tests_and_Criteria.md`, `docs/assignment3/Test_Results_Report.md` |
 
 ---
 
@@ -87,7 +87,19 @@ Our quality assurance philosophy is governed by four core principles:
 3. **Perimeter Zero-Trust:** All student authentication tokens terminate at the API gateway perimeter; zero raw tokens or cleartext PII may pass downstream to internal MCP tools or external AI providers.
 4. **Resilience by Design:** Upstream failure in one data connector (e.g., dining portal downtime) must remain strictly quarantined, preventing cascading degradation across other services.
 
-### 1.2 Testing Methodologies
+### 1.2 Testing Methodologies & V&V Test Levels
+
+In line with IEEE V&V principles and Project Assignment 3, testing distinguishes clearly between **Verification** and **Validation**:
+
+- **Verification (*"Are we building the system right?"*):** Checks conformance to specifications, schemas, contracts, and security invariants (`FR-01`..`FR-20`, `NFR-01`..`NFR-09`, `API Contract v1.1`). Covered by automated **Unit** and **Integration/Contract** tests (`TC-01`..`TC-08` module checks).
+- **Validation (*"Did we build the right system for the student?"*):** Checks whether an end user can complete the four selected campus scenarios end-to-end across the deployed stack. Covered by **System / E2E** and **Acceptance** tests (`AT-01`..`AT-04` in `docs/assignment3/Acceptance_Tests_and_Criteria.md`, results recorded separately in `docs/assignment3/Test_Results_Report.md`).
+
+| Test Level | Scope & Purpose | Representative Tests | Current Execution Status (20 Nov 2026) |
+| :--- | :--- | :--- | :--- |
+| **Unit** | Pure logic, Zod schemas, JWT verification, intent router, circuit breaker, in-memory cache/rate limiter | `routeStudentQuery.test.ts`, `auth.test.ts`, `dispatcher.test.ts`, `jwtAuth.test.ts`, `tests/connectors/*` | **Executed / Passed** (part of 230 Vitest tests) |
+| **Integration / Contract** | Inter-tier HTTP contracts (`POST /api/v1/query`, `POST /api/v1/chat/stream`), RESP2 Redis rate limiter, `ToolDispatcher` + connectors, 3-service Compose (`web` + `api-gateway` + `redis`) | `queryProxy.test.ts`, `chatStreamProxy.test.ts`, `rateLimiter.test.ts`, `dispatcherIntegration.test.ts`, `compose-3service-smoke.txt` | **3-service Compose (`web -> gateway -> redis`), live Redis rate limiter & stub proxy checks Executed / Passed**; live Docker MCP/connector E2E **Not Run (Blocked)** |
+| **System / E2E** | Browser → Next.js → Gateway → MCP → Connector/Agent → Redis full chain | Live `TC-04`, `TC-06`, `TC-08` E2E & `--mode=smoke` | **Not Run (Blocked)** pending `M-02`..`M-08`, `M-13`, `A-02`, `Y-07` |
+| **Acceptance (Validation)** | Student-facing completion of `UC-01`..`UC-04` against measurable `AC-01.x`..`AC-04.x` criteria | `AT-01`, `AT-02`, `AT-03`, `AT-04` | **Not Run (Blocked)** — unit/stub tests never count as AT PASS |
 
 The project employs a layered testing pyramid designed to validate functionality from isolated units to integrated multi-tier workflows:
 
@@ -110,16 +122,16 @@ flowchart TD
   - `apps/web/src/router/routeStudentQuery.ts`: Validates classification of natural language queries into `DIRECT_WIDGET` versus `LLM_AGENT` (`apps/web/tests/routeStudentQuery.test.ts`).
   - `apps/mcp-server/src/registry/toolDefinitions.ts` & `ToolDispatcher.ts`: Validates Zod schema bounds, parameter constraints, and authorization context guards (`tests/mcp-server/dispatcher.test.ts`).
   - `apps/api-gateway/src/auth/jwtVerifier.ts` & `tokenTermination.ts`: Validates signature verification, expiry checks, claim extraction, and header stripping (`apps/api-gateway/tests/jwtAuth.test.ts`).
-  - `apps/api-gateway/src/rate-limiter/`: Validates sliding-window counter logic (`InMemoryRateLimiterStore` in Phase 2; Redis-backed store planned for Phase 3).
+  - `apps/api-gateway/src/rate-limiter/`: Validates sliding-window counter logic (`InMemoryRateLimiterStore` in Phase 2; `RedisRateLimiterStore` + `RespTcpRedisClient` added in PA3 with `InMemoryRateLimiterStore` fail-open fallback).
   - `packages/connectors/` (`InMemoryCacheStore`, `CircuitBreaker`, `ResilientConnectorExecutor`, deterministic fixtures): Validates seeded mock determinism, TTL cache semantics, stale-if-error fallback, and 3-state circuit breaker transitions (`tests/connectors/`).
   - In-memory PII regex scrubber *(Planned for Phase 3)*: Will validate masking of student ID numbers, emails, and full names.
 - **Tooling:** Vitest (Node.js test runner) running offline in-memory with mock timers and synthetic fixtures.
 
 #### B. Integration & Contract Testing
 - **Scope:** Inter-service boundaries, HTTP headers, JSON-RPC envelopes, caching/resilience pipelines, and error handling.
-- **Key Workflows Tested (Phase 2 In-Memory vs. Phase 3 Containerized):**
-  - **Phase 2 Implemented:** `packages/connectors` integration with `apps/mcp-server` `ToolDispatcher` (`tests/connectors/dispatcherIntegration.test.ts`), `InMemoryCacheStore` TTL and `isStale` flag propagation (`tests/connectors/resilientExecutor.test.ts`, `tests/connectors/cacheStores.test.ts`), and 3-failure `OPEN` circuit breaker transitions (`tests/connectors/circuitBreaker.test.ts`).
-  - **Phase 3 Planned:** Fastify Gateway → Node.js MCP Server HTTP transport over Streamable HTTP (`/mcp`), live Redis cache hit/miss persistence, and full multi-container Supertest assertions.
+- **Key Workflows Tested (Phase 2 In-Memory vs. PA3 Stub/Contract vs. Live Containerized E2E):**
+  - **Phase 2 & PA3 Implemented (Local / Stub):** `packages/connectors` integration with `apps/mcp-server` `ToolDispatcher` (`tests/connectors/dispatcherIntegration.test.ts`), `InMemoryCacheStore` TTL and `isStale` flag propagation (`tests/connectors/resilientExecutor.test.ts`, `tests/connectors/cacheStores.test.ts`), 3-failure `OPEN` circuit breaker transitions (`tests/connectors/circuitBreaker.test.ts`), and Fastify Gateway HTTP contract/proxy tests (`POST /api/v1/query`, `POST /api/v1/chat/stream`, RESP2 TCP rate limiter against local in-process stub servers in `apps/api-gateway/tests/`).
+  - **Live Containerized E2E (Blocked / Pending Integration):** Live Gateway → real connector-backed MCP Server (`M-02`), live Gemini agent stream (`M-04`..`M-08`), and live Docker Redis persistence (`A-02`, `M-13`, `PR #18`).
 - **Tooling:** Vitest (active in Phase 2); Supertest and live Redis container integration (planned for Phase 3).
 
 #### C. Security & Privacy Testing
@@ -370,8 +382,8 @@ flowchart LR
 - **Expected Result:**
   - Steps 1, 2, and 3 are rejected at perimeter with HTTP `401 Unauthorized`.
   - Step 4 succeeds: Gateway strips raw `Authorization: Bearer <JWT>` header, discards any client-supplied `X-Authenticated-*` headers, and injects verified internal headers: `X-Authenticated-Student-Id: 241101066` and `X-Authenticated-User-Role: STUDENT`. Downstream server receives 0 raw JWT tokens.
-- **Actual Result (Phase 2):** Passed (Verified via Fastify gateway auth unit tests in `apps/api-gateway/tests/jwtAuth.test.ts`).
-- **Status:** **Pass**
+- **Actual Result (Phase 2 / PA3 Gateway Update):** **Unit, Gateway Stub-Proxy & Live Containerized Redis Rate Limiter Passed / Full Multi-Service E2E Not Run (Blocked).** Gateway JWT verification, `alg=none`/tampered/expired rejection, header anti-spoofing, token termination, Redis RESP2 sliding-window rate limiter, and `POST /api/v1/query` + `POST /api/v1/chat/stream` proxy behavior pass across **25 tests** in `apps/api-gateway/tests/` (`jwtAuth.test.ts`, `queryProxy.test.ts`, `chatStreamProxy.test.ts`, `rateLimiter.test.ts`, `deploymentConfig.test.ts`). Additionally, live containerized `campus-api-gateway:local` + `redis:7-alpine` smoke verification (`2026-11-20T10:11:05Z`) proved real `RATE_LIMITED` (`429` on 31st request, `ZCARD=30`) and `--internal` network isolation (`docs/assignment3/evidence/deployment/gateway-docker-redis-smoke.txt`). Live 4-service E2E remains **Not Run (Blocked)** pending MCP connector/agent and web integration.
+- **Status:** **Gateway + Live Redis Pass (Full 4-Service E2E Not Run — Blocked)**
 
 ---
 
@@ -479,20 +491,21 @@ assignees: Sefa-Efendioglu
 
 The table below maps each of the 4 defined Quality Factors and the 8 Core Test Cases directly to the authoritative Requirements Document (FR-01 to FR-20, NFR-01 to NFR-09) and the 4 Use Cases:
 
-| Verification Item | Target Subsystem | Linked Requirement(s) | Linked Use Case | Verification Method | Target Milestone |
-| :--- | :--- | :--- | :---: | :---: | :---: |
-| **QF-1: Performance** | MCP Server & Gateway | NFR-01 | All UCs | Measurement (M) | Phase 3 Integration |
-| **QF-2: Reliability** | Redis Cache & Circuit Breaker | NFR-03, FR-10, FR-11 | UC-01, UC-02 | Test (T) | Phase 3 Integration |
-| **QF-3: Security** | Fastify Gateway & PII Filter | NFR-05, FR-07, FR-14 | UC-04 | Test (T), Inspection (I) | Phase 2 Skeleton / Phase 3 |
-| **QF-4: Usability** | Next.js Dual-View Client | NFR-06, FR-18 | UC-01 to UC-04 | Demonstration (D), Survey | Phase 4 Testing |
-| **TC-01** | Dining Connector & Tool | FR-01, FR-03 | UC-01 | Unit / Integration (T) | Phase 2 Baseline (Passed) |
-| **TC-02** | Shuttle Connector & Tool | FR-01, FR-04 | UC-02 | Unit / Integration (T) | Phase 2 Baseline (Passed) |
-| **TC-03** | Library Connector & Tool | FR-01, FR-05, FR-12 | UC-03 | Unit / Integration (T) | Phase 2 Baseline (Passed) |
-| **TC-04** | Schedule Tool Auth Context | FR-06, FR-07 | UC-04 | Security Integration (T) | Phase 3 Core Dev |
-| **TC-05** | Bilingual Intent Router | FR-16 | UC-01 to UC-04 | Unit Benchmark (T) | Phase 2 Baseline (Passed) |
-| **TC-06** | Stale Cache & Circuit Breaker | FR-09, FR-10, FR-11 | UC-01, UC-02 | Fault Injection (T) | Phase 3 Core Dev |
-| **TC-07** | Gateway JWT & Token Stripping | FR-07, FR-08, NFR-05 | UC-04 | Security Unit (T, I) | Phase 2 Baseline (Passed) |
-| **TC-08** | AI Multi-Tool & PII Scrubbing | FR-13, FR-14 | UC-04 | Integration / E2E (T, D) | Phase 3 Core Dev |
+| Verification Item | Target Subsystem | Linked Requirement(s) | Linked Use Case | Linked AT (A3) | Verification Method | Current Status / Milestone |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
+| **QF-1: Performance** | MCP Server & Gateway | NFR-01 | All UCs | `AT-01`..`AT-04` | Measurement (M) | Not Measured (Pending Compose E2E) |
+| **QF-2: Reliability** | Redis Cache & Circuit Breaker | NFR-03, FR-10, FR-11 | UC-01, UC-02 | `AT-01`..`AT-03` | Test (T) | In-Memory Pass; Live Redis Blocked |
+| **QF-3: Security** | Fastify Gateway & PII Filter | NFR-05, FR-07, FR-14 | UC-04 | `AT-04` | Test (T), Inspection (I) | Gateway Unit/Contract Pass; Agent PII Blocked |
+| **QF-4: Usability** | Next.js Dual-View Client | NFR-06, FR-18 | UC-01 to UC-04 | `AT-01`..`AT-04` | Demonstration (D), Survey | Not Evaluated (Pending UI Integration) |
+| **TC-01** | Dining Connector & Tool | FR-01, FR-03 | UC-01 | `AT-01` | Unit / Integration (T) | Module Pass; E2E Blocked (`M-02`) |
+| **TC-02** | Shuttle Connector & Tool | FR-01, FR-04 | UC-02 | `AT-02` | Unit / Integration (T) | Module Pass; E2E Blocked (`M-02`) |
+| **TC-03** | Library Connector & Tool | FR-01, FR-05, FR-12 | UC-03 | `AT-03` | Unit / Integration (T) | Module Pass; E2E Blocked (`M-02`) |
+| **TC-04** | Schedule Tool Auth Context | FR-06, FR-07 | UC-04 | `AT-04` | Security Integration (T) | Unit/Proxy Pass; E2E Blocked (`M-02`, `M-13`) |
+| **TC-05** | Bilingual Intent Router | FR-16 | UC-01 to UC-04 | `AT-01`..`AT-04` | Unit Benchmark (T) | Passed (router tests + held-out/val) |
+| **TC-06** | Stale Cache & Circuit Breaker | FR-09, FR-10, FR-11 | UC-01, UC-02 | `AT-01`..`AT-03` | Fault Injection (T) | In-Memory Pass; Live Redis Blocked (`A-02`) |
+| **TC-07** | Gateway JWT & Token Stripping | FR-07, FR-08, NFR-05 | UC-04 | `AT-04` | Security Unit/Contract + Container Smoke (T, I) | Gateway Unit/Contract (25) + Live Redis Container Smoke Pass; Full E2E Blocked |
+| **TC-08** | AI Multi-Tool & PII Scrubbing | FR-13, FR-14 | UC-04 | `AT-04` | Integration / E2E (T, D) | Not Run / Blocked (`M-04`..`M-08`) |
+| **AT-01..AT-04** | Acceptance Tests for UC-01..UC-04 | FR-01..19 (selected) | UC-01..UC-04 | `TC-01`..`TC-08` (supporting) | System / Acceptance (Validation) | **Not Run (Blocked)** — see `Test_Results_Report.md` |
 
 ### 4.2 Assignment 2 Final Submission & Quality Gate Checklist
 
@@ -517,6 +530,9 @@ As Release & QA Lead, Ahmet Sefa Efendioğlu maintains the following quality gat
 | **v0.5** | 10 Nov 2026 | Ahmet Sefa Efendioğlu | Murat Can Işık | Formalized 4 Quality Factors & Metrics; aligned NFR latency and cache ratios. |
 | **v0.9** | 13 Nov 2026 | Ahmet Sefa Efendioğlu | Yunus Emre Biçer, Arda Çelik | Added test cases TC-01 to TC-08, defect classification, and GitHub Issue template. |
 | **v1.0** | 15 Nov 2026 | Ahmet Sefa Efendioğlu | Entire Team | Final deliverable compiled for Assignment 2 submission; Phase 2 task matrix reconciled. |
+| **v1.1** | 20 Nov 2026 | Ahmet Sefa Efendioğlu | Pending team review | PA3 V&V alignment: added Verification vs. Validation test level breakdown (§1.2), added `TC` ↔ `AT-01..04` crosswalk (§4.1), updated `TC-07` / gateway rate-limiter / proxy test status to reflect 25 gateway unit/contract tests while preserving blocked E2E/Redis/Gemini statuses honestly. |
+| **v1.2** | 20 Nov 2026 | Ahmet Sefa Efendioğlu | Pending team review | Recorded live containerized `api-gateway` + `redis:7-alpine` smoke test results (`gateway-docker-redis-smoke.txt`) for `TC-07` / `FR-08`, while keeping `TC-06` connector Redis, `TC-04`/`TC-08` E2E, and `AT-01..04` honestly marked blocked. |
+| **v1.3** | 20 Nov 2026 | Ahmet Sefa Efendioğlu | Pending team review | Synced with `dev` (`440efd0`: `PR #18` + `PR #20` merged); updated Vitest count to 230 tests and recorded 3-service Compose (`web` + `api-gateway` + `redis`) integration & `S-06` network isolation smoke results (`compose-3service-smoke.txt`). |
 
 *This document constitutes the official Quality Assurance Plan deliverable for Group-ASYM in BIL 481 Software Engineering, Fall 2026, prepared under the lead authorship responsibility of Ahmet Sefa Efendioğlu.*
 

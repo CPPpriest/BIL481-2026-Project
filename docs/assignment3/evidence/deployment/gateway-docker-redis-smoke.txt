@@ -1,0 +1,32 @@
+========================================================================
+Campus Data Orchestrator — Live Docker Gateway + Redis Smoke Evidence
+========================================================================
+SCOPE NOTICE: Verifies containerized api-gateway + redis:7-alpine ONLY
+              (S-04 live Redis rate limit, S-05 gateway Dockerfile build,
+              S-06 internal network isolation, compose.yaml validation).
+              Full 4-service Compose & AT-01..AT-04 remain BLOCKED pending
+              Murat (mcp-server Dockerfile/agent) & Yunus (web PR #18/Y-07).
+------------------------------------------------------------------------
+Executed At (UTC): 2026-11-20T10:11:05.799Z
+Base Commit SHA:   6ae34efe458605cb5b92567b72389b77dfef3274 (working tree on feat/pa3-gateway-release)
+Docker CLI:        Docker version 29.9.3, build 5457199
+Docker Compose:    Docker Compose version v5.7.0
+========================================================================
+
+[PASS] compose.yaml validation (`docker compose -f compose.yaml config --quiet`)
+[PASS] campus-api-gateway:local built (non-root user=node)
+[PASS] Created cdo-smoke-edge and cdo-smoke-internal (--internal)
+[PASS] cdo-smoke-redis started on internal network only (redis-cli ping -> PONG)
+[PASS] GET /health -> HTTP 200 ({"status":"UP","service":"api-gateway","timestamp":"2026-11-20T10:11:07.865Z"})
+[PASS] POST /api/v1/auth/mock-login -> HTTP 200 token=eyJhbGciOi...<redacted>
+[PASS] GET /api/v1/auth/me -> guest 401 AUTHENTICATION_REQUIRED, valid JWT 200
+[PASS] POST /api/v1/query -> guest get_course_schedule 401, studentId injection 400 INVALID_PARAMS
+[PASS] Live Redis rate limiter (FR-08): 30 requests -> 200, 31st -> HTTP 429 RATE_LIMITED (Retry-After=60s), /health exempt (200), Redis ZCARD(rate:student:rate-test-student)=30
+       Redis KEYS rate:* -> rate:student:rate-test-student, rate:student:demo-student-01, rate:ip:172.18.0.1
+[PASS] cdo-smoke-gateway Docker HEALTHCHECK status=healthy
+[PASS] cdo-smoke-redis host Ports={"6379/tcp":null} (zero host bindings, internal network only)
+--- Container Startup Log ---
+  [API Gateway] Listening at http://0.0.0.0:3000 (rateLimiter=redis, mcpUrl=http://localhost:3001/mcp)
+========================================================================
+RESULT: LIVE_GATEWAY_REDIS_DOCKER_SMOKE_PASSED (gateway + redis only)
+========================================================================

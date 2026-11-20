@@ -1,4 +1,5 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
+import { sendGatewayError } from '../http/errorResponse.js';
 import type { AuthenticatedRequestContext } from '../types/auth.js';
 
 export interface RateLimiterStore {
@@ -12,12 +13,14 @@ export interface RateLimiterStore {
 export class InMemoryRateLimiterStore implements RateLimiterStore {
   private windows: Map<string, number[]> = new Map();
 
+  constructor(private readonly now: () => number = () => Date.now()) {}
+
   async isRateLimited(
     key: string,
     limit: number,
     windowSeconds: number
   ): Promise<{ limited: boolean; retryAfter: number }> {
-    const now = Date.now();
+    const now = this.now();
     const windowMs = windowSeconds * 1000;
     const cutoff = now - windowMs;
 
@@ -28,6 +31,7 @@ export class InMemoryRateLimiterStore implements RateLimiterStore {
     if (active.length >= limit) {
       const oldestActive = active[0]!;
       const retryAfter = Math.ceil((oldestActive + windowMs - now) / 1000);
+      this.windows.set(key, active);
       return { limited: true, retryAfter: Math.max(1, retryAfter) };
     }
 
@@ -46,6 +50,7 @@ export const defaultRateLimiterStore = new InMemoryRateLimiterStore();
 /**
  * Rate Limiting Middleware (FR-08)
  * 30 requests per 60-second sliding window per student ID (or per IP for guests)
+ * Skips /health so orchestration liveness checks do not consume user quota.
  */
 export function createRateLimiterMiddleware(
   limit: number = 30,
@@ -53,6 +58,11 @@ export function createRateLimiterMiddleware(
   store: RateLimiterStore = defaultRateLimiterStore
 ) {
   return async function rateLimiter(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const pathname = (request.url || '').split('?')[0];
+    if (pathname === '/health') {
+      return;
+    }
+
     const context: AuthenticatedRequestContext = request.authContext || {
       studentId: null,
       role: 'GUEST',
@@ -62,22 +72,21 @@ export function createRateLimiterMiddleware(
     };
 
     // Partition key by student identity or guest IP
-    const key = context.isAuthenticated && context.studentId
-      ? `rate:student:${context.studentId}`
-      : `rate:ip:${context.clientIp}`;
+    const key =
+      context.isAuthenticated && context.studentId
+        ? `rate:student:${context.studentId}`
+        : `rate:ip:${context.clientIp}`;
 
     const result = await store.isRateLimited(key, limit, windowSeconds);
 
     if (result.limited) {
-      reply.header('Retry-After', result.retryAfter.toString());
-      reply.status(429).send({
-        statusCode: 429,
-        error: 'Too Many Requests',
-        message: `Rate limit ceiling reached (${limit} requests per ${windowSeconds}s). Please slow down.`,
-        timestamp: new Date().toISOString(),
-        retryAfterSeconds: result.retryAfter,
-      });
+      sendGatewayError(
+        reply,
+        429,
+        'RATE_LIMITED',
+        `Rate limit exceeded (${limit} requests per ${windowSeconds}s). Retry after ${result.retryAfter}s.`,
+        { 'Retry-After': result.retryAfter.toString() }
+      );
     }
   };
 }
-

@@ -1,0 +1,28 @@
+========================================================================
+Campus Data Orchestrator — 3-Service Compose Smoke (web + gateway + redis)
+========================================================================
+SCOPE NOTICE: Verifies `docker compose -f compose.yaml up --build -d --no-deps`
+              for `redis`, `api-gateway`, and `web` (following PR #18 & PR #20
+              merge onto dev). Full 4-service Compose (with `mcp-server`) and
+              AT-01..AT-04 remain BLOCKED pending Murat (M-02..M-08, M-13),
+              Arda (A-02, Q3), and Yunus (Y-07).
+------------------------------------------------------------------------
+Executed At (UTC): 2026-11-20T10:53:07.647Z
+Branch HEAD SHA:   2f8d5baf829e57ef51805cd63c3b03969463c2ff (feat/pa3-gateway-release)
+origin/dev SHA:    440efd088c2c2ea6a3523b7d02d7c4d14eca06a2 (includes PR #18 + PR #20)
+Docker CLI:        Docker version 29.9.3, build 5457199
+Docker Compose:    Docker Compose version v5.7.0
+========================================================================
+
+1. Validating compose.yaml...
+[PASS] docker compose -f compose.yaml config --quiet
+2. Building and starting redis, api-gateway, and web via compose.yaml (--no-deps)...
+[PASS] Compose healthchecks healthy: redis=healthy, api-gateway=healthy, web=healthy
+[PASS] Web routes (/healthz, /, /giris, /asistan -> 200) and Gateway (/health -> 200)
+[PASS] Rewrite POST /api/v1/auth/mock-login via :3002 -> HTTP 200 token=eyJhbGciOi...<redacted>
+[PASS] Rewrite /api/v1/auth/me (guest 401, JWT 200) and /api/v1/query (guest course 401, studentId injection 400)
+[PASS] End-to-end rewrite -> gateway -> live Redis rate limit: 30 x 200, 31st -> 429 RATE_LIMITED (Retry-After=60s), ZCARD=30
+[PASS] Network boundary S-06: redis Ports={"6379/tcp":null}, web -> redis:6379 probe=BLOCKED:TIMEOUT
+========================================================================
+RESULT: COMPOSE_3SERVICE_SMOKE_PASSED (web + api-gateway + redis)
+========================================================================

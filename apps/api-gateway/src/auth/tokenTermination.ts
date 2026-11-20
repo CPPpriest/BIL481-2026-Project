@@ -1,5 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { verifyToken } from './jwtVerifier.js';
+import { sendGatewayError } from '../http/errorResponse.js';
 import type { AuthenticatedRequestContext } from '../types/auth.js';
 
 // Extend FastifyRequest type to carry our authenticated context
@@ -15,7 +16,7 @@ declare module 'fastify' {
  * Rules:
  * 1. Discard any client-supplied X-Authenticated-* headers to prevent identity spoofing.
  * 2. If Authorization header is present, verify Bearer JWT.
- * 3. If token is invalid or expired, reject with 401 Unauthorized.
+ * 3. If token is invalid or expired, reject with 401 AUTHENTICATION_REQUIRED (Contract §3.4).
  * 4. Terminate token: strip raw Authorization header from internal forwarding.
  * 5. Inject verified identity context into request.
  */
@@ -33,10 +34,10 @@ export async function authenticateAndTerminateToken(
     }
   }
 
-  const authHeader = request.headers.authorization;
+  const rawAuthHeader = request.headers.authorization;
 
   // Unauthenticated Guest Path
-  if (!authHeader) {
+  if (!rawAuthHeader) {
     request.authContext = {
       studentId: null,
       role: 'GUEST',
@@ -48,26 +49,31 @@ export async function authenticateAndTerminateToken(
   }
 
   // Check Bearer scheme
-  if (!authHeader.startsWith('Bearer ')) {
-    reply.status(401).send({
-      statusCode: 401,
-      error: 'Unauthorized',
-      message: 'Invalid authorization format. Bearer scheme required.',
-      timestamp: new Date().toISOString(),
-    });
+  if (typeof rawAuthHeader !== 'string' || !rawAuthHeader.startsWith('Bearer ')) {
+    sendGatewayError(
+      reply,
+      401,
+      'AUTHENTICATION_REQUIRED',
+      'Invalid authorization format. Bearer scheme required.'
+    );
     return;
   }
 
-  const token = authHeader.substring(7).trim();
+  const token = rawAuthHeader.slice(7).trim();
+  if (!token) {
+    sendGatewayError(reply, 401, 'AUTHENTICATION_REQUIRED', 'Missing bearer token.');
+    return;
+  }
+
   const verification = verifyToken(token);
 
   if (!verification.valid || !verification.payload) {
-    reply.status(401).send({
-      statusCode: 401,
-      error: 'Unauthorized',
-      message: verification.error || 'Token verification failed',
-      timestamp: new Date().toISOString(),
-    });
+    sendGatewayError(
+      reply,
+      401,
+      'AUTHENTICATION_REQUIRED',
+      verification.error || 'Token verification failed'
+    );
     return;
   }
 
@@ -84,8 +90,7 @@ export async function authenticateAndTerminateToken(
     clientIp,
   };
 
-  // Inject verified internal headers for downstream proxying
+  // Inject verified internal headers for internal request auditing and context
   headers['x-authenticated-student-id'] = sub;
   headers['x-authenticated-user-role'] = role;
 }
-
