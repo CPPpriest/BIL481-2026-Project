@@ -20,6 +20,7 @@
     "clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\""
   },
   "dependencies": {
+    "@campus-orchestrator/connectors": "*",
     "@campus-orchestrator/shared": "*",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "zod": "^3.23.8"
