@@ -5,6 +5,25 @@ import type { AuthContext } from '@campus-orchestrator/shared';
 import { ToolDispatcher, AuthenticationRequiredError } from './dispatcher/ToolDispatcher.js';
 import { createCampusMcpServer } from './server.js';
 import { TOOL_DEFINITIONS } from './registry/toolDefinitions.js';
+import type { ConnectorRuntime } from '@campus-orchestrator/connectors';
+
+export interface McpServerStartOptions {
+  /** Injected connector runtime (tests); defaults to one built from process.env. */
+  connectorRuntime?: ConnectorRuntime;
+}
+
+/** Describes the connector tier for logs and /health. Redis is not wired yet (Arda A-02). */
+function describeRuntime(runtime: ConnectorRuntime | undefined) {
+  if (!runtime) {
+    return { source: 'sample-mocks (deprecated)' };
+  }
+  return {
+    source: 'connectors',
+    cache: 'in-memory',
+    redisUrlConfigured: Boolean(process.env.REDIS_URL),
+    connectorModes: runtime.config.modes,
+  };
+}
 
 // Re-export all submodules for external and library consumers
 export * from './registry/toolDefinitions.js';
@@ -18,10 +37,11 @@ export * from './mocks/sampleMockHandlers.js';
  * Designed for local command-line MCP clients, desktop assistants, or MCP Inspector via CLI.
  */
 export async function startStdioServer(
-  dispatcher: ToolDispatcher = new ToolDispatcher()
+  dispatcher: ToolDispatcher = new ToolDispatcher(),
+  options: McpServerStartOptions = {}
 ): Promise<void> {
-  const { server } = createCampusMcpServer(dispatcher, {
-    registerSampleMocks: true,
+  const { server, connectorRuntime } = createCampusMcpServer(dispatcher, {
+    connectorRuntime: options.connectorRuntime,
   });
 
   const transport = new StdioServerTransport();
@@ -29,6 +49,7 @@ export async function startStdioServer(
 
   // Diagnostic logs must be written to stderr; stdout is reserved for JSON-RPC messages
   console.error('[MCP Server] Stdio transport successfully connected and running.');
+  console.error('[MCP Server] Runtime:', JSON.stringify(describeRuntime(connectorRuntime)));
 }
 
 /**
@@ -43,11 +64,13 @@ export async function startStdioServer(
 export async function startHttpServer(
   port: number = Number(process.env.MCP_SERVER_PORT || process.env.PORT || 3001),
   host = '0.0.0.0',
-  dispatcher: ToolDispatcher = new ToolDispatcher()
+  dispatcher: ToolDispatcher = new ToolDispatcher(),
+  options: McpServerStartOptions = {}
 ): Promise<http.Server> {
-  const { server } = createCampusMcpServer(dispatcher, {
-    registerSampleMocks: true,
+  const { server, connectorRuntime } = createCampusMcpServer(dispatcher, {
+    connectorRuntime: options.connectorRuntime,
   });
+  const runtimeInfo = describeRuntime(connectorRuntime);
 
   // Track active SSE transport sessions by sessionId
   const sseSessions = new Map<string, SSEServerTransport>();
@@ -78,6 +101,7 @@ export async function startHttpServer(
         version: '1.0.0',
         transports: ['stdio', 'streamable-http (SSE)'],
         tools: TOOL_DEFINITIONS.length,
+        runtime: runtimeInfo,
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
       };
@@ -258,6 +282,12 @@ export async function startHttpServer(
     httpServer.listen(port, host, () => {
       console.log(`[MCP Server] Running on Streamable HTTP http://${host}:${port}/mcp`);
       console.log(`[MCP Server] Health check available at http://${host}:${port}/health`);
+      console.log('[MCP Server] Runtime:', JSON.stringify(runtimeInfo));
+      if (runtimeInfo.redisUrlConfigured) {
+        console.log(
+          '[MCP Server] REDIS_URL is set but the Redis client is not wired yet; using in-memory cache (BLOCKED: Arda A-02).'
+        );
+      }
       resolve(httpServer);
     });
 
