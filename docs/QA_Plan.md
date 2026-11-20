@@ -9,7 +9,7 @@
 | **Group Name** | Group-ASYM |
 | **QA Lead & Primary Author** | **Ahmet Sefa Efendioğlu** (241101066) — `@Sefa-Efendioglu` |
 | **Contributors to this Document** | **Ahmet Sefa Efendioğlu** (Lead Author, QA Strategy, Metrics, Test Cases, V&V Alignment, Bug Tracking), **Murat Can Işık** (MCP & Agent Test Alignment), **Yunus Emre Biçer** (Frontend, Usability & AT Test Alignment), **Arda Çelik** (Connector & Reliability Test Alignment) |
-| **Document Version / Date** | Version 1.2 (PA3 V&V + Live Gateway/Redis Container Verification), 20 November 2026 *(v1.0 PA2 baseline: 15 November 2026)* |
+| **Document Version / Date** | Version 1.3 (PA3 V&V + 3-Service Compose Verification), 20 November 2026 *(v1.0 PA2 baseline: 15 November 2026)* |
 | **Repository Filepath** | `docs/QA_Plan.md` |
 | **Related Documents** | `docs/Requirements_Document.md`, `docs/Project_Plan_Document.md`, `docs/Design_Document.md`, `docs/assignment3/Acceptance_Tests_and_Criteria.md`, `docs/assignment3/Test_Results_Report.md` |
 
@@ -96,9 +96,9 @@ In line with IEEE V&V principles and Project Assignment 3, testing distinguishes
 
 | Test Level | Scope & Purpose | Representative Tests | Current Execution Status (20 Nov 2026) |
 | :--- | :--- | :--- | :--- |
-| **Unit** | Pure logic, Zod schemas, JWT verification, intent router, circuit breaker, in-memory cache/rate limiter | `routeStudentQuery.test.ts`, `dispatcher.test.ts`, `jwtAuth.test.ts`, `tests/connectors/*` | **Executed / Passed** (part of 217 Vitest tests) |
-| **Integration / Contract** | Inter-tier HTTP contracts (`POST /api/v1/query`, `POST /api/v1/chat/stream`), RESP2 Redis rate limiter, `ToolDispatcher` + connectors | `queryProxy.test.ts`, `chatStreamProxy.test.ts`, `rateLimiter.test.ts`, `dispatcherIntegration.test.ts`, live `api-gateway` + `redis:7-alpine` container smoke | **Gateway + Redis container rate limiter & stub proxy checks Executed / Passed**; live Docker MCP/connector E2E **Not Run (Blocked)** |
-| **System / E2E** | Browser → Next.js → Gateway → MCP → Connector/Agent → Redis full chain | Live `TC-04`, `TC-06`, `TC-08` E2E & `--mode=smoke` | **Not Run (Blocked)** pending `M-02`..`M-08`, `M-13`, `A-02`, `PR #18/#20`, `Y-07` |
+| **Unit** | Pure logic, Zod schemas, JWT verification, intent router, circuit breaker, in-memory cache/rate limiter | `routeStudentQuery.test.ts`, `auth.test.ts`, `dispatcher.test.ts`, `jwtAuth.test.ts`, `tests/connectors/*` | **Executed / Passed** (part of 230 Vitest tests) |
+| **Integration / Contract** | Inter-tier HTTP contracts (`POST /api/v1/query`, `POST /api/v1/chat/stream`), RESP2 Redis rate limiter, `ToolDispatcher` + connectors, 3-service Compose (`web` + `api-gateway` + `redis`) | `queryProxy.test.ts`, `chatStreamProxy.test.ts`, `rateLimiter.test.ts`, `dispatcherIntegration.test.ts`, `compose-3service-smoke.txt` | **3-service Compose (`web -> gateway -> redis`), live Redis rate limiter & stub proxy checks Executed / Passed**; live Docker MCP/connector E2E **Not Run (Blocked)** |
+| **System / E2E** | Browser → Next.js → Gateway → MCP → Connector/Agent → Redis full chain | Live `TC-04`, `TC-06`, `TC-08` E2E & `--mode=smoke` | **Not Run (Blocked)** pending `M-02`..`M-08`, `M-13`, `A-02`, `Y-07` |
 | **Acceptance (Validation)** | Student-facing completion of `UC-01`..`UC-04` against measurable `AC-01.x`..`AC-04.x` criteria | `AT-01`, `AT-02`, `AT-03`, `AT-04` | **Not Run (Blocked)** — unit/stub tests never count as AT PASS |
 
 The project employs a layered testing pyramid designed to validate functionality from isolated units to integrated multi-tier workflows:
@@ -532,6 +532,7 @@ As Release & QA Lead, Ahmet Sefa Efendioğlu maintains the following quality gat
 | **v1.0** | 15 Nov 2026 | Ahmet Sefa Efendioğlu | Entire Team | Final deliverable compiled for Assignment 2 submission; Phase 2 task matrix reconciled. |
 | **v1.1** | 20 Nov 2026 | Ahmet Sefa Efendioğlu | Pending team review | PA3 V&V alignment: added Verification vs. Validation test level breakdown (§1.2), added `TC` ↔ `AT-01..04` crosswalk (§4.1), updated `TC-07` / gateway rate-limiter / proxy test status to reflect 25 gateway unit/contract tests while preserving blocked E2E/Redis/Gemini statuses honestly. |
 | **v1.2** | 20 Nov 2026 | Ahmet Sefa Efendioğlu | Pending team review | Recorded live containerized `api-gateway` + `redis:7-alpine` smoke test results (`gateway-docker-redis-smoke.txt`) for `TC-07` / `FR-08`, while keeping `TC-06` connector Redis, `TC-04`/`TC-08` E2E, and `AT-01..04` honestly marked blocked. |
+| **v1.3** | 20 Nov 2026 | Ahmet Sefa Efendioğlu | Pending team review | Synced with `dev` (`440efd0`: `PR #18` + `PR #20` merged); updated Vitest count to 230 tests and recorded 3-service Compose (`web` + `api-gateway` + `redis`) integration & `S-06` network isolation smoke results (`compose-3service-smoke.txt`). |
 
 *This document constitutes the official Quality Assurance Plan deliverable for Group-ASYM in BIL 481 Software Engineering, Fall 2026, prepared under the lead authorship responsibility of Ahmet Sefa Efendioğlu.*
 

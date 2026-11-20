@@ -8,12 +8,12 @@
 | **Assignment** | Project Assignment 3 — Deliverable 1: Deployment Plan |
 | **Group Name** | Group-ASYM |
 | **Document Lead & Primary Author** | **Ahmet Sefa Efendioğlu** (241101066) — `@Sefa-Efendioglu` |
-| **Document Version / Date** | **Version 0.2 (Gateway + Redis Docker Smoke Verified; Pending Full Compose & Teammate Handovers), 20 November 2026** |
+| **Document Version / Date** | **Version 0.3 (3-Service Compose Stack Verified: `web` + `api-gateway` + `redis`; `mcp-server` Blocked), 20 November 2026** |
 | **Repository Filepath** | `docs/assignment3/Deployment_Plan.md` |
-| **Inspected Branch & Base SHA** | `feat/pa3-gateway-release` branched from `dev` @ `6ae34efe458605cb5b92567b72389b77dfef3274` |
+| **Inspected Branch & Base SHA** | `feat/pa3-gateway-release` synced with `dev` @ `440efd088c2c2ea6a3523b7d02d7c4d14eca06a2` (`PR #18` & `PR #20` merged) |
 | **Related Documents** | `docs/assignment3/contracts/API_CONTRACT.md` (team draft v1.1), `docs/assignment3/Acceptance_Tests_and_Criteria.md`, `docs/assignment3/Test_Results_Report.md`, `docs/QA_Plan.md` |
 
-> **Honest Verification Status (v0.2):** Local TypeScript compilation across all 5 workspaces (`npm run build`), 217 automated Vitest tests, the gateway `--mode=stub-self-test` harness, **`compose.yaml` schema validation (`docker compose config --quiet`), `apps/api-gateway/Dockerfile` image build (`campus-api-gateway:local`), and live containerized `api-gateway` + `redis:7-alpine` smoke testing (Docker `29.9.3`, Compose `v5.7.0`)** have been executed and verified. **Full 4-service `docker compose up --build` has NOT been executed yet** because upstream `mcp-server` (`M-13`) and `web` (`PR #18`) container deliverables are not yet merged on `dev` (see §2.2 and §3.5).
+> **Honest Verification Status (v0.3):** `npm run typecheck --workspace @campus-orchestrator/web`, `tsc` across `shared`/`connectors`/`mcp-server`/`api-gateway`, 230 automated Vitest tests (20 files), the gateway `--mode=stub-self-test` harness, and **real 3-service Docker Compose orchestration (`docker compose -f compose.yaml up --build -d --no-deps redis api-gateway web`)** have all been executed and verified (Docker `29.9.3`, Compose `v5.7.0`). *(Note: Local `next build` on Windows sandbox hit `EPERM: mkdir` during Next.js `output: 'standalone'` file-copy tracing after PR #18, whereas the Linux `node:24-alpine` container build inside `apps/web/Dockerfile` compiled `output: 'standalone'` cleanly.)* **Full 4-service `docker compose up --build` remains BLOCKED** until Murat delivers `apps/mcp-server/Dockerfile` and connector/agent wiring (`M-02`..`M-08`, `M-13`) and Arda confirms `A-02` (see §2.2 and §3.5).
 
 ---
 
@@ -23,8 +23,8 @@ In compliance with the Project Assignment 3 deliverables specification, contribu
 
 | Member Name | Student ID | GitHub Account | Project Role | Contribution to this Document | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Ahmet Sefa Efendioğlu** | 241101066 | `@Sefa-Efendioglu` | Gateway, Security & Release Lead | **Lead Author:** Drafted Deployment Overview, Deployment Process, Configuration Plan, `apps/api-gateway/Dockerfile`, `.dockerignore`, `compose.yaml`; verified local build/stub baseline, `compose.yaml` validation, `campus-api-gateway:local` Docker build, and live `api-gateway` + `redis:7-alpine` container smoke test. | Drafted (v0.2) |
-| **Yunus Emre Biçer** | 241101009 | `@YunusEmre113` | Web Client Lead | Provided early Docker/Compose handover in `origin/feat/pa3-web-docker` (`apps/web/Dockerfile`, `/healthz`, `apps/web/README.md`, PR #18 open). | Handover drafted (PR #18 pending merge to `dev`) |
+| **Ahmet Sefa Efendioğlu** | 241101066 | `@Sefa-Efendioglu` | Gateway, Security & Release Lead | **Lead Author:** Drafted Deployment Overview, Deployment Process, Configuration Plan, `apps/api-gateway/Dockerfile`, `.dockerignore`, `compose.yaml`; verified local tests/stub baseline, live `api-gateway` + `redis:7-alpine` smoke, and 3-service Compose (`web` + `api-gateway` + `redis`) integration & network isolation. | Drafted (v0.3) |
+| **Yunus Emre Biçer** | 241101009 | `@YunusEmre113` | Web Client Lead | Delivered `apps/web/Dockerfile`, `/healthz`, standalone build, `apps/web/README.md` (`PR #18`, `dc2da33`), and `/giris` login (`PR #20`, `440efd0`) merged on `dev`. | Handover merged (`PR #18`, `PR #20`) |
 | **Murat Can Işık** | 241101013 | `@cmuratt` | MCP Server & Agent Lead | MCP Server & Agent `Dockerfile`, `/internal/agent/stream` endpoint, and Gemini/connector wiring handover (`M-02`, `M-08`, `M-13`). | Pending handover |
 | **Arda Çelik** | 241101065 | `@ardacelik11` | Connectors & Data Lead | Live Redis connector runtime wiring (`A-02`), `CONNECTOR_FIXED_NOW` (`Q3`), and Redis service handover (`A-12`). | Pending handover |
 
@@ -39,7 +39,7 @@ In compliance with the Project Assignment 3 deliverables specification, contribu
    - 2.3 [Mock vs. Live Data Source Boundary](#13-mock-vs-live-data-source-boundary)
 3. [Deployment Process](#2-deployment-process)
    - 3.1 [Verified Local Build, Test & Standalone Gateway Runbook](#21-verified-local-build-test--standalone-gateway-runbook)
-   - 3.2 [Verified Gateway + Redis Container Build & Live Smoke (`S-04`, `S-05`, `S-06`)](#22-verified-gateway--redis-container-build--live-smoke-s-04-s-05-s-06)
+   - 3.2 [Verified 3-Service Docker Compose Stack (`web` + `api-gateway` + `redis`, `S-04`, `S-05`, `S-06`)](#22-verified-3-service-docker-compose-stack-web--api-gateway--redis-s-04-s-05-s-06)
    - 3.3 [Target 4-Service Deployment via Docker Compose (Not Yet Executed — Blocked)](#23-target-4-service-deployment-via-docker-compose-not-yet-executed--blocked)
    - 3.4 [Smoke Verification & Shutdown / Rollback](#24-smoke-verification--shutdown--rollback)
 4. [Configuration Plan](#3-configuration-plan)
@@ -60,10 +60,10 @@ In compliance with the Project Assignment 3 deliverables specification, contribu
 | **TSK-DEP-02** | Author `apps/api-gateway/Dockerfile`, `.dockerignore`, and `compose.yaml` skeleton (`S-05`, `S-06`) | Ahmet Sefa Efendioğlu | Murat Can Işık, Yunus Emre Biçer | **Completed & Verified** (`compose config`, gateway `docker build`, live Redis + Gateway container smoke passed) |
 | **TSK-DEP-03** | Document verified local build/test/stub runbook & pending Compose procedure (§2) | Ahmet Sefa Efendioğlu | Entire Team | Completed (v0.1) |
 | **TSK-DEP-04** | Finalize Configuration Plan, env matrix, secret handling, and network boundaries (§3) | Ahmet Sefa Efendioğlu | Arda Çelik, Murat Can Işık | Completed (v0.1) |
-| **TSK-DEP-05** | Integrate `apps/web/Dockerfile` handover (`PR #18`) into `dev` and verify web container build | Yunus Emre Biçer | Ahmet Sefa Efendioğlu | **Pending merge** (PR #18 open on GitHub) |
+| **TSK-DEP-05** | Integrate `apps/web/Dockerfile` handover (`PR #18`) into `dev` and verify web container build | Yunus Emre Biçer (merge) / Ahmet Sefa Efendioğlu (verify) | Ahmet Sefa Efendioğlu | **Completed & Verified** (`PR #18` merged on `dev`; 3-service Compose `web` + `gateway` + `redis` passed) |
 | **TSK-DEP-06** | Deliver `apps/mcp-server/Dockerfile`, real connector registration, and `/internal/agent/stream` (`M-02`, `M-08`, `M-13`) | Murat Can Işık | Ahmet Sefa Efendioğlu | **Blocked — Pending Murat** |
 | **TSK-DEP-07** | Confirm live Redis connector config, `CONNECTOR_FIXED_NOW`, and Redis handover (`A-02`, `A-12`) | Arda Çelik | Ahmet Sefa Efendioğlu | **Blocked — Pending Arda** |
-| **TSK-DEP-08** | Execute fresh-clone `docker compose up --build` and end-to-end health verification (`S-05`, `S-07`) | Ahmet Sefa Efendioğlu | Entire Team | **Blocked** (awaiting TSK-DEP-05/06/07 & Docker environment) |
+| **TSK-DEP-08** | Execute fresh-clone 4-service `docker compose up --build` and end-to-end health verification (`S-05`, `S-07`) | Ahmet Sefa Efendioğlu | Entire Team | **Blocked** (awaiting TSK-DEP-06 & TSK-DEP-07) |
 
 ---
 
@@ -98,9 +98,9 @@ Browser (User)
 | :--- | :--- | :--- |
 | **Operating System** | Local dev/verification: **Windows**; Container runtime target: **`node:24-alpine`** | Verified locally on Windows; Linux containers targeted in `compose.yaml` |
 | **Node.js / npm** | Observed locally: **Node.js `v26.4.0`**, **npm `11.17.0`** | Monorepo npm workspaces (`shared`, `connectors`, `mcp-server`, `api-gateway`, `web`) |
-| **TypeScript / Build** | TypeScript `^5.4.5` (`strict`, `NodeNext`), Next.js `16.4.6` (Turbopack) | All 5 workspaces build cleanly locally |
-| **Test Runner** | Vitest `^5.1.0` | 19 test files / 217 tests passing locally |
-| **Container Engine** | Observed locally: **Docker `29.9.3`**, **Docker Compose `v5.7.0`** (Linux containers via WSL 2) | `docker compose -f compose.yaml config --quiet`, `apps/api-gateway/Dockerfile` build, and live `api-gateway` + `redis:7-alpine` container smoke verified |
+| **TypeScript / Build** | TypeScript `^5.4.5` (`strict`, `NodeNext`), Next.js `16.4.6` (Turbopack, `output: 'standalone'`) | `tsc` passes across TS workspaces & `web` typecheck; `next build` standalone trace compiles cleanly inside Docker (`node:24-alpine`); local Windows sandbox hits `EPERM: mkdir` on `.next/standalone` tracing |
+| **Test Runner** | Vitest `^5.1.0` | **20 test files / 230 tests** passing locally |
+| **Container Engine** | Observed locally: **Docker `29.9.3`**, **Docker Compose `v5.7.0`** (Linux containers via WSL 2) | `compose.yaml config --quiet`, `api-gateway` + `redis`, and 3-service Compose (`web` + `api-gateway` + `redis`) verified |
 | **Cache Store** | Verified container: `redis:7-alpine` (`internal` network only) | Live sorted-set sliding-window rate limiting (`ZCARD=30`, 31st → `429 RATE_LIMITED`) verified against `redis:7-alpine`; connector `RedisCacheStore` runtime wiring (`A-02`) pending Arda |
 
 ### 1.3 Mock vs. Live Data Source Boundary
@@ -148,27 +148,29 @@ The following steps were **actually executed and verified** on `feat/pa3-gateway
    # Expected: {"status":"UP","service":"api-gateway","timestamp":"..."}
    ```
 
-### 2.2 Verified Gateway + Redis Container Build & Live Smoke (`S-04`, `S-05`, `S-06`)
+### 2.2 Verified 3-Service Docker Compose Stack (`web` + `api-gateway` + `redis`, `S-04`, `S-05`, `S-06`)
 
-The following Docker verification steps were **actually executed and passed** on `2026-11-20T10:11:05Z` (`13:11+03:00`) using Docker `29.9.3` and Docker Compose `v5.7.0` (evidence: [`docs/assignment3/evidence/deployment/gateway-docker-redis-smoke.txt`](evidence/deployment/gateway-docker-redis-smoke.txt)):
+The following Docker & Compose verifications were **actually executed and passed** on `2026-11-20T10:11:05Z` (gateway + Redis smoke, [`gateway-docker-redis-smoke.txt`](evidence/deployment/gateway-docker-redis-smoke.txt)) and `2026-11-20T10:53:07Z` (3-service Compose smoke after merging `PR #18` & `PR #20`, [`compose-3service-smoke.txt`](evidence/deployment/compose-3service-smoke.txt)) using Docker `29.9.3` and Docker Compose `v5.7.0`:
 
 1. **Validate `compose.yaml` syntax and variable schema:**
    ```bash
    JWT_SECRET=compose-validation-placeholder docker compose -f compose.yaml config --quiet
    ```
    **Observed result:** Exit code `0`.
-2. **Build the gateway production image (non-root `USER node`, `node:24-alpine`):**
+2. **Build and launch `redis`, `api-gateway`, and `web` together via `compose.yaml` (`--no-deps` while `mcp-server` is blocked):**
    ```bash
-   docker build -f apps/api-gateway/Dockerfile -t campus-api-gateway:local .
+   docker compose -f compose.yaml up --build -d --no-deps redis api-gateway web
    ```
-   **Observed result:** Built cleanly (`203.42 kB` build context, 57 prod packages).
-3. **Run live `api-gateway` + `redis:7-alpine` container smoke over isolated `edge` and `--internal` networks:**
-   - Verified `cdo-smoke-redis` joined only the `--internal` network with zero host port bindings (`Ports={"6379/tcp":null}`), and `cdo-smoke-gateway` reported Docker `HEALTHCHECK` status `healthy` (`NODE_ENV=production`, `GATEWAY_PORT=3000`, `rateLimiter=redis`).
-   - Verified `GET /health` (`200`), `POST /api/v1/auth/mock-login` (`200`), `GET /api/v1/auth/me` (guest `401`, JWT `200`), guest `get_course_schedule` (`401`), `studentId` parameter injection (`400 INVALID_PARAMS`), and **live Redis rate limiting**: 30 requests → `200`, 31st → `429 RATE_LIMITED` (`Retry-After=60s`), `redis-cli ZCARD rate:student:rate-test-student` = `30`.
+   **Observed result:**
+   - Both `bil481-2026-project-api-gateway` (`USER node`) and `bil481-2026-project-web` (`USER web`, Next.js `output: 'standalone'`) built cleanly in Linux `node:24-alpine` containers.
+   - All three Compose healthchecks reached **`healthy`** (`redis=healthy`, `api-gateway=healthy`, `web=healthy`).
+   - Web routes `GET http://127.0.0.1:3002/healthz` (`{"status":"ok","service":"web"}`), `/`, `/giris`, `/asistan`, and gateway `GET http://127.0.0.1:3000/health` all returned HTTP `200`.
+   - Next.js server-side rewrite (`http://127.0.0.1:3002/api/v1/*` → `http://api-gateway:3000/api/v1/*`) passed `POST /api/v1/auth/mock-login` (`200`), `GET /api/v1/auth/me` (guest `401`, JWT `200`), `POST /api/v1/query` (guest `get_course_schedule` `401`, `studentId` parameter injection `400 INVALID_PARAMS`), and **live Redis rate limiting** (30 requests `200`, 31st `429 RATE_LIMITED` with `Retry-After=60s`, `redis-cli ZCARD rate:student:compose-rate-student` = `30`).
+   - **Network isolation (`S-06`):** `redis` published zero host ports (`{"6379/tcp":null}`), and an active TCP probe from inside the `web` container to `redis:6379` returned `BLOCKED:TIMEOUT`.
 
 ### 2.3 Target 4-Service Deployment via Docker Compose (Not Yet Executed — Blocked)
 
-> **Important Honesty Notice:** While `compose.yaml` syntax, `apps/api-gateway/Dockerfile`, and live `api-gateway` + `redis:7-alpine` container execution are verified (§2.2), **full 4-service `docker compose up --build` has NOT been executed yet** due to open teammate dependencies (`M-08`, `M-13`, `A-02`, `PR #18`). The commands below document the target runbook once blockers are resolved.
+> **Important Honesty Notice:** While 3-service Compose (`web` + `api-gateway` + `redis`) is verified (§2.2), **full 4-service `docker compose up --build` (including `mcp-server`) has NOT been executed yet** due to open Murat (`M-02`..`M-08`, `M-13`) and Arda (`A-02`) dependencies. The commands below document the full target runbook once those blockers land on `dev`.
 
 1. **Create runtime `.env` file from template (never commit `.env`):**
    ```bash
@@ -256,17 +258,16 @@ Aligned with `API Contract v1.1 §7` and `.env.example`:
 
 ### 3.5 Known Limitations & Open Deployment Blockers
 
-1. **Full 4-Service `docker compose up` Blocked (Gateway + Redis Container Smoke Passed):** Docker `29.9.3` & Compose `v5.7.0` are now installed and verified for `compose.yaml` config, `apps/api-gateway/Dockerfile`, and live `api-gateway` + `redis:7-alpine`, while `mcp-server` and `web` services remain blocked below.
+1. **Full 4-Service `docker compose up` Blocked (3-Service `web` + `api-gateway` + `redis` Verified):** Docker `29.9.3` & Compose `v5.7.0` verified `web` + `api-gateway` + `redis` end-to-end, while `mcp-server` cannot build or run yet.
 2. **BLOCKED on Murat (`M-02`, `M-04`, `M-05`, `M-08`, `M-13`):**
    - `apps/mcp-server/Dockerfile` does not exist yet (`compose.yaml` `mcp-server` build fails without it).
    - `apps/mcp-server/src/index.ts` still calls `registerSampleMockHandlers` instead of Arda's `createConnectorRuntime` / `registerConnectorHandlers`.
    - `POST /internal/agent/stream` and `AgentOrchestrator.executePlan()` (`NOT_IMPLEMENTED`) are not implemented yet.
-3. **BLOCKED on Yunus (`PR #18`, `PR #20`, `Y-07`):**
-   - `apps/web/Dockerfile` and `/healthz` exist on `origin/feat/pa3-web-docker` (PR #18) and login exists on `origin/feat/pa3-web-auth` (PR #20), but neither is merged into `dev` yet.
-   - Chat UI composer wiring (`Y-07`) is pending.
+3. **Remaining Web Task (`Y-07` — Yunus):**
+   - `PR #18` (`Dockerfile` + `/healthz`) and `PR #20` (`/giris` + session) are now **merged on `dev`** (`440efd0`) and verified in Compose; only `Y-07` chat UI composer wiring remains before `AT-04`.
 4. **BLOCKED on Arda (`A-02`, `A-12`, `Q3`):**
    - `RedisCacheStore` runtime bootstrap (`createConnectorRuntime` with real `REDIS_URL`) and `CONNECTOR_FIXED_NOW` wiring need confirmation before live Compose acceptance runs.
-5. **PostgreSQL / Prisma (FR-20):** Not included in the Assignment 3 `compose.yaml` baseline; deferred unless explicitly added before release freeze.
+5. **Local Windows Sandbox Caveat & PostgreSQL (FR-20):** Local `next build` on Windows sandbox hit `EPERM: mkdir` on `.next/standalone` tracing (works cleanly inside Linux Docker build). PostgreSQL / Prisma (FR-20) is deferred from the Assignment 3 `compose.yaml` baseline.
 
 ---
 
@@ -276,3 +277,4 @@ Aligned with `API Contract v1.1 §7` and `.env.example`:
 | :--- | :--- | :--- | :--- | :--- |
 | **0.1** | 20 Nov 2026 | All | Initial Deployment Plan draft; added `compose.yaml`, gateway `Dockerfile`/`.dockerignore`, verified local build/test baseline, and recorded container/teammate blockers honestly. | Ahmet Sefa Efendioğlu |
 | **0.2** | 20 Nov 2026 | Overview, §1.2, §2.2–2.4, §3.5 | Installed Docker Desktop `29.9.3` + Compose `v5.7.0`; fixed `.dockerignore` workspace manifest preservation; verified `compose.yaml config --quiet`, `apps/api-gateway/Dockerfile` build, and live `api-gateway` + `redis:7-alpine` container smoke test (`gateway-docker-redis-smoke.txt`). Full 4-service Compose remains blocked on `M-13` and `PR #18`. | Ahmet Sefa Efendioğlu |
+| **0.3** | 20 Nov 2026 | Overview, Contributors, Task Matrix, §1.2, §2.2, §3.5 | Synced `feat/pa3-gateway-release` with `dev` @ `440efd0` (`PR #18` + `PR #20` merged); verified real 3-service Compose (`web` + `api-gateway` + `redis`), cross-container rewrite, live Redis rate limit, and `web -> redis` network isolation (`compose-3service-smoke.txt`); updated Vitest count to 230/230. | Ahmet Sefa Efendioğlu |

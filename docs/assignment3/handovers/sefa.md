@@ -5,8 +5,8 @@
 | **Author** | Ahmet Sefa Efendioğlu (241101066) — `@Sefa-Efendioglu` |
 | **Component** | `apps/api-gateway/**`, `compose.yaml`, `tests/contracts/fixtures/query-{invalid-params,unauthorized}.json`, `docs/assignment3/{Deployment_Plan,Test_Results_Report}.md`, `docs/QA_Plan.md` |
 | **For** | Murat Can Işık (`mcp-server` / `shared` / `Design_Document` / `traceability`), Arda Çelik (`connectors` / `redis`), Yunus Emre Biçer (`web` / `Acceptance_Tests_and_Criteria`) |
-| **Version / Date** | 1.0, 20 November 2026 |
-| **Branch / Base SHA** | `feat/pa3-gateway-release` over `dev` @ `6ae34efe458605cb5b92567b72389b77dfef3274` |
+| **Version / Date** | 1.1, 20 November 2026 |
+| **Branch / Base SHA** | `feat/pa3-gateway-release` synced with `dev` @ `440efd088c2c2ea6a3523b7d02d7c4d14eca06a2` |
 
 ---
 
@@ -40,13 +40,16 @@ All three open items assigned to Sefa in API Contract v1.1 §8 are implemented a
 
 ## 3. Verified vs. Blocked Status
 
-- **Verified locally (`dev` @ `6ae34ef` + Sefa branch edits):**
-  - `npm run clean --workspace @campus-orchestrator/web && npm run build` → 5/5 workspaces built.
-  - `npx vitest run` → 19 files / 217 tests passed (`25` new/updated tests across `apps/api-gateway/tests/`).
+- **Verified locally (`dev` @ `440efd0` merged into `feat/pa3-gateway-release`):**
+  - `tsc` across `shared`, `connectors`, `mcp-server`, `api-gateway` and `npm run typecheck --workspace @campus-orchestrator/web` passed (note: local Windows sandbox hits `EPERM: mkdir` on `.next/standalone` tracing, while Docker `node:24-alpine` builds `web` cleanly).
+  - `npx vitest run` → **20 files / 230 tests passed** (`25` in `apps/api-gateway/tests/`, `111` in `apps/web/tests/` incl. `PR #20`, `76` in `tests/connectors/`, `18` in `tests/mcp-server/`).
   - `node apps/api-gateway/scripts/run-acceptance-harness.mjs --mode=stub-self-test` → 12/12 gateway checks passed against in-process stubs.
-  - **Docker (`29.9.3`) & Compose (`v5.7.0`):** `docker compose -f compose.yaml config --quiet` passed; `apps/api-gateway/Dockerfile` built `campus-api-gateway:local` (non-root `USER node`); live `api-gateway` + `redis:7-alpine` smoke passed (`HEALTHCHECK=healthy`, internal-only Redis with zero host ports, 30 allowed / 31st `429 RATE_LIMITED`, Redis `ZCARD=30`). Evidence: `docs/assignment3/evidence/deployment/gateway-docker-redis-smoke.txt`.
+  - **Docker (`29.9.3`) & Compose (`v5.7.0`) — 3-Service Compose Verified (`web` + `api-gateway` + `redis`):**
+    - `docker compose -f compose.yaml up --build -d --no-deps redis api-gateway web` brought all 3 services to `healthy`.
+    - Verified `/healthz`, `/`, `/giris`, `/asistan`, Next.js rewrite `/api/v1/auth/mock-login` (`200`), `/auth/me` (guest `401` / JWT `200`), `/api/v1/query` (`401` / `400` injection), live Redis rate limiter (`30 x 200`, 31st `429 RATE_LIMITED`, `ZCARD=30`), and `S-06` isolation (`redis` zero host ports, `web -> redis:6379` `BLOCKED:TIMEOUT`).
+    - Evidence: `docs/assignment3/evidence/deployment/gateway-docker-redis-smoke.txt`, `docs/assignment3/evidence/deployment/compose-3service-smoke.txt`.
 - **Not verified / Blocked:**
-  - Full 4-service `docker compose up --build` is still blocked on missing `apps/mcp-server/Dockerfile` (`M-13`) and unmerged `PR #18` (`apps/web/Dockerfile`).
+  - Full 4-service `docker compose up --build` is blocked on missing `apps/mcp-server/Dockerfile` (`M-13`).
   - `AT-01`..`AT-04` are all `NOT RUN (BLOCKED)`.
 
 ---
@@ -60,7 +63,6 @@ All three open items assigned to Sefa in API Contract v1.1 §8 are implemented a
 2. **From Arda (`A-02`, `A-12`, `Q3`):**
    - Wire `RedisCacheStore` to a real Redis client driven by `REDIS_URL` in `packages/connectors` runtime bootstrap.
    - Confirm `CONNECTOR_FIXED_NOW` support (Contract §8 Q3) and provide Redis verification/seed handover notes for `Deployment_Plan.md`.
-3. **From Yunus (`PR #18`, `PR #20`, `Y-07`):**
-   - Merge `PR #18` (`feat/pa3-web-docker`: `apps/web/Dockerfile` & `/healthz`) and `PR #20` (`feat/pa3-web-auth`) to `dev`.
+3. **From Yunus (`Y-07` — `PR #18` & `PR #20` already merged and Compose-verified):**
    - Complete `Y-07` chat UI wiring against `POST /api/v1/chat/stream`.
-   - Review `docs/assignment3/Deployment_Plan.md` and `docs/assignment3/Test_Results_Report.md` (and note Sefa's gateway `MOCK_SSO_ISSUER` default is `campus-mock-sso` matching `.env.example`).
+   - Review `docs/assignment3/Deployment_Plan.md` and `docs/assignment3/Test_Results_Report.md` (gateway `MOCK_SSO_ISSUER` default is `campus-mock-sso` matching `.env.example`).

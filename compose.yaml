@@ -8,7 +8,7 @@
 #
 # Integration Status / Known Blockers:
 #   - `api-gateway`: Dockerfile ready (`apps/api-gateway/Dockerfile`, owner: Sefa).
-#   - `web`: Aligned with Yunus's `apps/web/README.md` (`feat/pa3-web-docker`, PR #18 — BLOCKED until merged to `dev`).
+#   - `web`: Dockerfile & `/healthz` merged on `dev` (`PR #18`, `dc2da33`, owner: Yunus).
 #   - `mcp-server`: BLOCKED until Murat delivers `apps/mcp-server/Dockerfile` and `/internal/agent/stream` (`M-08`, `M-13`).
 
 networks:
@@ -100,7 +100,7 @@ services:
       retries: 3
       start_period: 10s
 
-  # BLOCKED on dev until Yunus's PR #18 (feat/pa3-web-docker) is merged to provide apps/web/Dockerfile & /healthz.
+  # Ready on dev (Yunus PR #18 merged: apps/web/Dockerfile & /healthz; edge network only).
   web:
     build:
       context: .
