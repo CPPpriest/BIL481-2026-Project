@@ -11,6 +11,7 @@ import {
   ToolDispatcher,
   AuthenticationRequiredError,
 } from './dispatcher/ToolDispatcher.js';
+import { buildToolCallOutcome } from './wire/jsonRpc.js';
 import { registerSampleMockHandlers } from './mocks/sampleMockHandlers.js';
 import {
   createConnectorRuntime,
@@ -87,18 +88,14 @@ export function createCampusMcpServer(
     };
 
     try {
-      const result = await dispatcher.dispatch(name, args, authContext);
+      const outcome = buildToolCallOutcome(await dispatcher.dispatch(name, args, authContext));
 
-      if (result.isError && result.code === -32602) {
-        throw new McpError(ErrorCode.InvalidParams, result.message ?? 'Invalid params');
+      if (outcome.kind === 'protocol-error') {
+        const code = outcome.error.code === -32601 ? ErrorCode.MethodNotFound : ErrorCode.InvalidParams;
+        throw new McpError(code, outcome.error.message);
       }
 
-      return {
-        content: Array.isArray(result.content)
-          ? (result.content as any)
-          : [{ type: 'json', data: result.content }],
-        isError: result.isError,
-      };
+      return outcome.result as any;
     } catch (err: unknown) {
       if (err instanceof AuthenticationRequiredError) {
         throw new McpError(ErrorCode.InvalidRequest, err.message);
