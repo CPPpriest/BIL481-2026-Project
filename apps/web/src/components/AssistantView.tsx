@@ -1,17 +1,29 @@
 'use client';
 
 import Link from 'next/link';
+import { ChatView } from './chat/ChatView';
 import { useSession } from './SessionProvider';
 import styles from './AssistantView.module.css';
 
 /**
  * Assistant view (UC-04). Every chat message needs a verified student
- * session (API Contract v1.1 §1 "Chat access"), so guests only see how to log
- * in. The streaming chat itself (Y-07) is connected in a later step; until
- * then the composer stays disabled and says so.
+ * session (API Contract v1.1 §1 "Chat access"): guests see how to log in,
+ * logged-in students get the streaming chat.
  */
 export function AssistantView() {
-  const { state } = useSession();
+  const { state, reportUnauthorized } = useSession();
+
+  if (state.status === 'authenticated') {
+    return (
+      <ChatView
+        // A new session (other student) starts with an empty conversation.
+        key={state.session.user.studentId}
+        token={state.session.token}
+        userName={state.session.user.name}
+        onUnauthorized={reportUnauthorized}
+      />
+    );
+  }
 
   return (
     <section className={styles.conversation} aria-label="Sohbet">
@@ -30,16 +42,6 @@ export function AssistantView() {
             <Link href="/giris?next=%2Fasistan" className={styles.loginLink}>
               Giriş yap
             </Link>
-          </div>
-        )}
-
-        {state.status === 'authenticated' && (
-          <div className={styles.welcome}>
-            <p>
-              Merhaba <strong>{state.session.user.name}</strong>. Ders programın, ring saatleri ve yemekhane menüsünü
-              birlikte gerektiren soruları burada sorabileceksin.
-            </p>
-            <p className={styles.muted}>Sohbet bağlantısı henüz eklenmedi.</p>
           </div>
         )}
       </div>

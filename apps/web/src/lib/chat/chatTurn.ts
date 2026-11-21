@@ -86,11 +86,13 @@ export function applyChatEvent(state: ChatTurnState, event: ChatEvent): ChatTurn
         slow: false,
       };
     case 'error':
+      // The UI is Turkish and the agent's message may be English or technical, so a fixed
+      // Turkish text is shown; the server text never reaches the screen.
       return {
         ...state,
         phase: 'error',
         slow: false,
-        error: { code: 'AGENT_ERROR', message: event.message || 'Asistan cevap üretirken bir hata oluştu.' },
+        error: { code: 'AGENT_ERROR', message: 'Asistan cevap üretirken bir hata oluştu.' },
       };
   }
 }
