@@ -8,7 +8,7 @@
 | **Assignment** | Project Assignment 3 — Deliverable 2: Acceptance Tests and Acceptance Criteria |
 | **Group Name** | Group-ASYM |
 | **Document Lead & Author** | **Yunus Emre Biçer** (241101009) — `@YunusEmre113` |
-| **Document Version / Date** | **Version 0.5 (draft for team review), 20 November 2026** — see §9 Change Record |
+| **Document Version / Date** | **Version 0.6 (reviewed by all members), 21 November 2026** — see §9 Change Record |
 | **Repository Filepath** | `docs/assignment3/Acceptance_Tests_and_Criteria.md` |
 | **Related Documents** | `docs/Requirements_Document.md` (FR/NFR IDs), `docs/Design_Document.md` §3 (UC-01..UC-04), `docs/QA_Plan.md` (TC-01..TC-08), API Contract v1.1 (to be committed as `docs/assignment3/contracts/API_CONTRACT.md`), `docs/assignment3/Deployment_Plan.md` and `docs/assignment3/Test_Results_Report.md` (both in preparation, lead: Ahmet Sefa Efendioğlu) |
 
@@ -19,7 +19,7 @@
 | Member | Student ID | GitHub | Role in this document | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | **Yunus Emre Biçer** | 241101009 | `@YunusEmre113` | Lead author: structure, acceptance criteria, AT-01..AT-04, traceability, task matrix | Drafted v0.1 |
-| **Arda Çelik** | 241101065 | `@ardacelik11` | Review of data, cache and stale-fallback criteria (AC-01.x, AC-02.x, AC-03.x) | Review requested |
+| **Arda Çelik** | 241101065 | `@ardacelik11` | Review of data, cache and stale-fallback criteria (AC-01.x, AC-02.x, AC-03.x) | Reviewed — no objection; clarifications applied in v0.6 (PR #17 comment, 20 Nov 2026) |
 | **Murat Can Işık** | 241101013 | `@cmuratt` | Review of MCP and agent criteria (AC-04.3 – AC-04.7, AC-04.10, AC-04.11) | Reviewed — no objection (PR #17 review, 20 Nov 2026) |
 | **Ahmet Sefa Efendioğlu** | 241101066 | `@Sefa-Efendioglu` | Review of gateway, security and end-to-end execution conditions (AC-04.1, AC-04.8, AC-04.9) | Reviewed — approved with two notes (PR #17 comment, 20 Nov 2026) |
 
@@ -76,7 +76,7 @@ Project Assignment 3 requires clear and measurable acceptance criteria for the f
 | Agent path | Query sent to `POST /api/v1/chat/stream` and answered by the LLM agent (`LLM_AGENT` route) |
 | `meta.source` | Execution source of a response: `LIVE` (fresh connector run, may still be synthetic), `CACHE_HIT`, `STALE`, `ERROR` (API Contract v1.1 §1) |
 | `meta.isSimulated` | `true` when the data is synthetic (mock connector); reported separately from `meta.source` |
-| Test clock | The campus time (UTC+3) used by the connectors during a run; fixed with `CONNECTOR_FIXED_NOW` when available (§2.3) |
+| Test clock | The campus time (UTC+3) used by the connectors during a run; it starts at the `CONNECTOR_FIXED_NOW` instant when the MCP server starts and then advances in real time (§2.3) |
 | Mandatory / Conditional criterion | Mandatory criteria decide PASS/FAIL. Conditional criteria are checked when the stated condition holds; otherwise they are reported as `NOT RUN` with the reason and do not by themselves fail the test |
 
 ---
@@ -101,7 +101,8 @@ No official TOBB ETÜ campus interface is available to the project. All four con
 | Web data source | `NEXT_PUBLIC_WEB_DATA_SOURCE=gateway`. Runs in `fixtures` mode do not count as acceptance runs |
 | Weekday test date | Monday **2026-11-23** |
 | Weekend test date | Sunday **2026-11-22** |
-| Test clock | `CONNECTOR_FIXED_NOW=2026-11-23T09:00:00+03:00` if supported (API Contract v1.1 §8 Q3, owner Arda Çelik). If not supported at execution time, the real clock is used and the execution time is recorded so that "future departure" checks can be compared against it |
+| Test clock | `CONNECTOR_FIXED_NOW=2026-11-23T09:00:00+03:00` (API Contract v1.1 §8 Q3, owner Arda Çelik; PR #31). The connector clock **starts** at 09:00 when the MCP server starts and then **advances in real time** — a frozen clock would keep cached data fresh forever and AC-03.7 could never be observed. The real start time of the MCP server is recorded in the execution record. AT-02 step 8 restarts the MCP server with another start instant |
+| Cache state | The tool cache is emptied before AT-01, AT-02 and AT-03 (Appendix B), so that the first request of a test is a fresh connector run and cache criteria do not depend on earlier runs |
 | Test user | Synthetic student created through `POST /api/v1/auth/mock-login` (e.g. `demo-student-01`); no real identity, token or API key is written into evidence |
 | LLM provider | Real Gemini provider for AT-04 (`GEMINI_API_KEY` from environment only) |
 
@@ -109,6 +110,7 @@ No official TOBB ETÜ campus interface is available to the project. All four con
 
 - Evidence is stored under `docs/assignment3/evidence/AT-0x/` using the record in Appendix A.
 - Allowed evidence: screenshots, redacted browser network entries (HAR excerpts), redacted gateway/MCP/agent log excerpts, test command output.
+- **Connector log** (PR #31): every connector call writes one JSON line to the MCP server's stderr, `{"event":"connector.execute","connector":…,"outcome":"LIVE|CACHE_HIT|STALE|ERROR","upstreamCalled":true|false,"cacheKey":…}` (no tool arguments, identity or student ID). It is collected with `docker compose logs mcp-server | grep connector.execute`. **"The connector is executed once"** in a criterion means exactly one line with `"upstreamCalled": true` for that cache key in the stated period; **"no connector execution"** means no `connector.execute` line for the request at all.
 - Tokens, API keys, real names and real student numbers are never written into evidence. JWTs are shown at most as `eyJ…<redacted>`.
 
 ### 2.5 Pass / fail rules
@@ -142,7 +144,7 @@ Criteria are numbered `AC-<UC>.<n>`. "How it is measured" names the observable t
 | AC-01.4 | A weekend day is explained, not treated as an error | Response and card for 2026-11-22 | HTTP 200, `available = false`, non-empty `unavailableReason`; the card shows the reason; no error message | FR-03, Design §3.2 alt. flow | Mandatory |
 | AC-01.5 | An impossible date is rejected before any connector call | Direct API request with `date = "2026-99-77"` (Appendix B) | HTTP 400, `error.code = "INVALID_PARAMS"`; no cafeteria connector execution in the MCP log for that request | FR-01 (criterion 2), API Contract §3.4 | Mandatory |
 | AC-01.6 | Synthetic data is labelled and not called "MOCK" as a source | Response `meta` and card badges | `meta.isSimulated = true`; `meta.source ∈ {LIVE, CACHE_HIT}`; card shows "Sentetik veri" | FR-12, API Contract §1 | Mandatory |
-| AC-01.7 | A repeated request within the TTL is served from cache | Two identical requests less than 3600 s apart (card "Yenile") | Second response `meta.source = "CACHE_HIT"`, `meta.isStale = false`; the connector is executed once for the two requests (MCP/connector log) | FR-09 | Mandatory |
+| AC-01.7 | Repeated requests within the TTL are served from cache | Every request for 2026-11-23 during the AT-01 run (after the cache reset); connector log for `cache:dining:2026-11-23` | The cafeteria connector is executed **exactly once** for 2026-11-23 during the whole AT-01 run; every later request for that date has `meta.source = "CACHE_HIT"` and `meta.isStale = false`. *(Which step makes the first call depends on the browser date: the card's default date is the browser's date, so if the run happens on 23 November, step 1 already makes it.)* | FR-09 | Mandatory |
 | AC-01.8 | The menu is reachable without login and fits a phone screen | Open the landing page as a guest at 1440 px and 375 px | Menu card visible on the landing page without login; no horizontal scrolling at 375 px | FR-15, NFR-06 (3), NFR-07 | Mandatory |
 
 ### 3.2 UC-02 — View Shuttle Schedule
@@ -150,12 +152,12 @@ Criteria are numbered `AC-<UC>.<n>`. "How it is measured" names the observable t
 | ID | Criterion | How it is measured | Threshold | Source | Type |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | AC-02.1 | A single-domain shuttle question takes the direct path | Router decision; network and agent log | `DIRECT_WIDGET` → `get_shuttle_schedule`; 0 chat requests; 0 LLM requests | FR-16, FR-18 | Mandatory |
-| AC-02.2 | Only future departures, in order | `data.nextDepartures` against the test clock | Every value is strictly later than the test clock; values are in ascending order; at most the configured count | FR-04 | Mandatory |
+| AC-02.2 | Only future departures, in order | `data.nextDepartures` against the connector time of the response (`data.lastUpdated` for a `LIVE` response; the request time for a `CACHE_HIT`) | Every value is strictly later than that connector time; values are in ascending order; at most 3 values (`NEXT_DEPARTURE_COUNT`) | FR-04 | Mandatory |
 | AC-02.3 | The selected route is the one shown | Select Ana Ring, Metro, Yurtlar in turn | `data.routeId` equals the selection (`MAIN_RING`, `METRO_LINE`, `DORMITORY_LINE`); card title shows the matching `routeName` | FR-04 | Mandatory |
 | AC-02.4 | An unknown route is rejected | Direct API request with `route = "NOWHERE"` (Appendix B) | HTTP 400, `error.code = "INVALID_PARAMS"`; message names the valid values or is a safe generic message | FR-04, FR-01, API Contract §3.4 | Mandatory |
-| AC-02.5 | End of service is shown as an empty state | Request after the last departure of a route (test clock ≥ 22:00, e.g. `DORMITORY_LINE` after 21:45) | `nextDepartures = []`; card shows "Bugün bu hatta başka sefer yok."; no error | Design §3.3 alt. flow, FR-19 | Conditional — requires a settable test clock or execution after 22:00 |
+| AC-02.5 | End of service is shown as an empty state | MCP server restarted with `CONNECTOR_FIXED_NOW=2026-11-23T22:30:00+03:00`; request for `DORMITORY_LINE` ("Yurtlar", last weekday departure 21:45) | `nextDepartures = []`; card shows "Bugün bu hatta başka sefer yok."; no error. *(A connector time after 22:00 ends service only for `DORMITORY_LINE` and `MAIN_RING`; `METRO_LINE` runs until 23:00 on weekdays.)* | Design §3.3 alt. flow, FR-19 | Mandatory |
 | AC-02.6 | Synthetic data is labelled | `meta` and card badges | `meta.isSimulated = true`; "Sentetik veri" visible; no claim of real GPS data | FR-12 | Mandatory |
-| AC-02.7 | A repeated request within the TTL is served from cache | Two identical requests less than 120 s apart | Second `meta.source = "CACHE_HIT"`; connector executed once | FR-09 | Mandatory |
+| AC-02.7 | A repeated request within the TTL is served from cache | Two identical requests less than 120 s apart; connector log for the route's cache key | Second `meta.source = "CACHE_HIT"`; the connector is executed once for the two requests (§2.4) | FR-09 | Mandatory |
 
 ### 3.3 UC-03 — View Library Occupancy
 
@@ -164,10 +166,10 @@ Criteria are numbered `AC-<UC>.<n>`. "How it is measured" names the observable t
 | AC-03.1 | A single-domain library question takes the direct path | Router decision; network and agent log | `DIRECT_WIDGET` → `get_library_occupancy`; 0 chat requests; 0 LLM requests | FR-16, FR-18 | Mandatory |
 | AC-03.2 | Seat counts are within bounds | `data.floors[]` for `floor = ALL` | `0 ≤ occupiedSeats ≤ maxSeats` for every floor | FR-05 | Mandatory |
 | AC-03.3 | Totals equal the sum of the floors | `data` for `floor = ALL` | `totalOccupied = Σ occupiedSeats`; `totalCapacity = Σ maxSeats`; card percentage = `round(totalOccupied / totalCapacity × 100)` | FR-05 | Mandatory |
-| AC-03.4 | A single floor shows only that floor | Select "2. kat" (`FLOOR_3`) | `floors` contains only `FLOOR_3`; totals equal that floor's values; the floor's numbers equal its entry in an `ALL` response taken in the same 60 s cache window | FR-05 | Mandatory |
+| AC-03.4 | A single floor shows only that floor | Select "2. kat" (`FLOOR_3`) | `floors` contains only `FLOOR_3`; totals equal that floor's values; the floor's numbers equal its entry in an `ALL` response taken within the same 15-minute occupancy window (occupancy is re-sampled every 15 minutes, and `ALL` and `FLOOR_3` are separate cache entries; the AT-03 run therefore stays within 09:00–09:15 connector time) | FR-05 | Mandatory |
 | AC-03.5 | Library data is always labelled synthetic | `data.isSimulated`, `meta.isSimulated`, card | Both flags `true`; "Sentetik veri" visible | FR-05, FR-12 | Mandatory |
-| AC-03.6 | A repeated request within the TTL is served from cache | Two identical requests less than 60 s apart | Second `meta.source = "CACHE_HIT"`; connector executed once | FR-09 | Mandatory |
-| AC-03.7 | During a connector failure, cached data is served with a freshness warning | Fault injected into the library connector after a successful request and after the TTL expired | HTTP 200, `meta.source = "STALE"`, `meta.isStale = true`, `meta.timestamp` = original cache time; card shows the stale warning with that time | FR-10, FR-19 | Conditional — requires fault injection in the demo deployment; otherwise covered by TC-06 and reported `NOT RUN` |
+| AC-03.6 | A repeated request within the TTL is served from cache | Two identical requests less than 60 s apart; connector log for `cache:library:ALL` | Second `meta.source = "CACHE_HIT"`; the connector is executed once for the two requests (§2.4) | FR-09 | Mandatory |
+| AC-03.7 | During a connector failure, cached data is served with a freshness warning | After a `LIVE` "Tüm katlar" request, the MCP server is restarted with `LIBRARY_CONNECTOR_MODE=live` (the live placeholder always fails); "Yenile" is pressed **between 60 s and 180 s** after the `LIVE` request (after the 60 s TTL, inside the 3 × TTL retention); requires the Redis-backed cache so the cached value survives the restart | HTTP 200, `meta.source = "STALE"`, `meta.isStale = true`, `meta.timestamp` = original cache time, `meta.isSimulated` stays `true`; the card shows the stale warning with that time; connector log shows `"outcome":"STALE"` | FR-10, FR-19 | Mandatory |
 
 ### 3.4 UC-04 — Combined Course, Shuttle and Menu Question
 
@@ -212,7 +214,7 @@ Each test lists preconditions, the test data, numbered steps with the expected o
 | **Actor** | Guest user |
 | **Level** | System / acceptance (validation) |
 | **Responsibilities** | UI evidence: Yunus Emre Biçer · data and cache evidence: Arda Çelik · end-to-end execution: Ahmet Sefa Efendioğlu |
-| **Preconditions** | Demo stack running per Deployment Plan; connectors in mock mode; web data source `gateway`; browser network log and server logs recording; not logged in |
+| **Preconditions** | Demo stack running per Deployment Plan with the test clock of §2.3; connectors in mock mode; web data source `gateway`; tool cache emptied (Appendix B); browser network log, MCP connector log and server logs recording; not logged in |
 | **Test data** | Weekday 2026-11-23, weekend 2026-11-22, impossible date 2026-99-77 |
 
 | Step | Action | Expected observation | Checks |
@@ -222,7 +224,7 @@ Each test lists preconditions, the test data, numbered steps with the expected o
 | 3 | In the menu card set the date to 2026-11-23 | One `POST /api/v1/query` with `{"toolName":"get_cafeteria_menu","parameters":{"date":"2026-11-23"}}`; HTTP 200; `available = true`; both meals with calories > 0 | AC-01.2 |
 | 4 | Compare every value shown in the card with the response `data` | All dishes, the vegetarian option, calories and allergens match | AC-01.3 |
 | 5 | Inspect the response `meta` and the card badges | `isSimulated = true`; `source` is `LIVE` or `CACHE_HIT`; "Sentetik veri" badge visible | AC-01.6 |
-| 6 | Press "Yenile" within 3600 s of step 3 | Second response `source = "CACHE_HIT"`, `isStale = false`; MCP/connector log shows one connector execution for the two requests | AC-01.7 |
+| 6 | Press "Yenile" within 3600 s of step 3 | Response `source = "CACHE_HIT"`, `isStale = false`; over steps 1–6 the connector log shows exactly one `upstreamCalled: true` line for `cache:dining:2026-11-23` (§2.4) | AC-01.7 |
 | 7 | Set the date to 2026-11-22 | HTTP 200, `available = false`; the card shows the closed reason instead of meals; no error message | AC-01.4 |
 | 8 | Send the impossible-date request from Appendix B | HTTP 400, `error.code = "INVALID_PARAMS"`; no cafeteria connector execution for this request in the MCP log | AC-01.5 |
 | 9 | Switch the viewport to 375 px and reload | Menu card fully visible; no horizontal scroll bar | AC-01.8 |
@@ -240,23 +242,23 @@ Each test lists preconditions, the test data, numbered steps with the expected o
 | **Actor** | Guest user |
 | **Level** | System / acceptance (validation) |
 | **Responsibilities** | UI evidence: Yunus Emre Biçer · data and cache evidence: Arda Çelik · end-to-end execution: Ahmet Sefa Efendioğlu |
-| **Preconditions** | As AT-01; test clock fixed to 2026-11-23 09:00 (UTC+3) if supported, otherwise execution time recorded |
+| **Preconditions** | As AT-01 (test clock started at 2026-11-23 09:00, cache emptied); for step 8 the MCP server is restarted with `CONNECTOR_FIXED_NOW=2026-11-23T22:30:00+03:00` |
 | **Test data** | Routes `MAIN_RING`, `METRO_LINE`, `DORMITORY_LINE`; invalid route `NOWHERE` |
 
 | Step | Action | Expected observation | Checks |
 | :---: | :--- | :--- | :--- |
 | 1 | Type *"Sonraki ring kaçta?"* and press "Sor" | Decision "Doğrudan kart: Ring seferleri"; ring card highlighted; no chat request; no provider request | AC-02.1 |
 | 2 | In the ring card select "Ana Ring" | `POST /api/v1/query` with `route = "MAIN_RING"`; `routeId = "MAIN_RING"`; card title shows the route name | AC-02.3 |
-| 3 | Check `nextDepartures` against the test clock | Every departure strictly later than the test clock; ascending order; card lists them as `HH:mm` | AC-02.2 |
+| 3 | Check `nextDepartures` against the connector time of the response (`data.lastUpdated` for `LIVE`) | Every departure strictly later than that time; ascending order; at most 3 values; card lists them as `HH:mm` | AC-02.2 |
 | 4 | Inspect `meta` and badges | `isSimulated = true`; "Sentetik veri" visible | AC-02.6 |
 | 5 | Press "Yenile" within 120 s of step 2 | Second response `source = "CACHE_HIT"`; one connector execution for both requests | AC-02.7 |
 | 6 | Select "Metro", then "Yurtlar" | `routeId` = `METRO_LINE`, then `DORMITORY_LINE`; departures again future and ascending | AC-02.3, AC-02.2 |
 | 7 | Send the invalid-route request from Appendix B | HTTP 400, `error.code = "INVALID_PARAMS"` | AC-02.4 |
-| 8 | *(Conditional)* With the test clock set to 2026-11-23 22:30, select "Yurtlar" | `nextDepartures = []`; card shows "Bugün bu hatta başka sefer yok." | AC-02.5 |
+| 8 | Restart the MCP server with `CONNECTOR_FIXED_NOW=2026-11-23T22:30:00+03:00` (Appendix B), empty the cache, reload the dashboard and select "Yurtlar" | `nextDepartures = []`; card shows "Bugün bu hatta başka sefer yok."; no error | AC-02.5 |
 
-**Pass/fail rule:** PASS if steps 1–7 show the expected observation and step 8 either passes or is `NOT RUN` with the reason "no settable test clock". A failure in step 8, when executed, is a FAIL.
+**Pass/fail rule:** PASS if steps 1–8 all show the expected observation. Any deviation in a mandatory criterion is a FAIL.
 
-**Evidence:** screenshots of steps 1, 3, 6 (and 8 if run); network entries of steps 2, 5, 6, 7; connector log for step 5; the test clock value used.
+**Evidence:** screenshots of steps 1, 3, 6 and 8; network entries of steps 2, 5, 6, 7, 8; connector log lines for step 5; both `CONNECTOR_FIXED_NOW` values and the MCP start times used.
 
 ### 4.3 AT-03 — UC-03 View Library Occupancy
 
@@ -267,7 +269,7 @@ Each test lists preconditions, the test data, numbered steps with the expected o
 | **Actor** | Guest user |
 | **Level** | System / acceptance (validation) |
 | **Responsibilities** | UI evidence: Yunus Emre Biçer · data, cache and fault-injection evidence: Arda Çelik · end-to-end execution: Ahmet Sefa Efendioğlu |
-| **Preconditions** | As AT-01. For step 7, a way to make the library connector fail in the demo deployment (e.g. fault-injection configuration provided by the connector owner) |
+| **Preconditions** | As AT-01 (test clock started at 2026-11-23 09:00, cache emptied); steps 1–6 completed before 09:15 connector time (one 15-minute occupancy window); the Redis-backed tool cache active (PR #31), so cached data survives the MCP restart of step 7 |
 | **Test data** | Floors `ALL`, `FLOOR_3` |
 
 | Step | Action | Expected observation | Checks |
@@ -276,13 +278,13 @@ Each test lists preconditions, the test data, numbered steps with the expected o
 | 2 | In the library card keep "Tüm katlar" | `floor = "ALL"`; three floors returned | AC-03.2 |
 | 3 | Check each floor and the totals | `0 ≤ occupiedSeats ≤ maxSeats`; `totalOccupied` and `totalCapacity` equal the sums; card percentage and "x / y koltuk" match | AC-03.2, AC-03.3 |
 | 4 | Inspect flags and badges | `data.isSimulated = true`, `meta.isSimulated = true`; "Sentetik veri" visible | AC-03.5 |
-| 5 | Within 60 s select "2. kat" | Only `FLOOR_3` returned; totals equal that floor; numbers equal the `FLOOR_3` entry from step 2 | AC-03.4 |
-| 6 | Select "Tüm katlar" again within 60 s of step 2 | `source = "CACHE_HIT"`; one connector execution for the two `ALL` requests | AC-03.6 |
-| 7 | *(Conditional)* Wait until the 60 s TTL has expired, make the library connector fail, then press "Yenile" | HTTP 200 with `source = "STALE"`, `isStale = true`, original timestamp; the card shows "Bu bilgi güncel olmayabilir" with that time | AC-03.7 |
+| 5 | Within the same 15-minute window as step 2, select "2. kat" | Only `FLOOR_3` ("2. Kat - Sessiz Çalışma Salonu") returned; totals equal that floor; numbers equal the `FLOOR_3` entry from step 2 | AC-03.4 |
+| 6 | Select "Tüm katlar" again within 60 s of step 2 | `source = "CACHE_HIT"`; the connector log shows exactly one `upstreamCalled: true` line for `cache:library:ALL` for the two requests | AC-03.6 |
+| 7 | Restart the MCP server with `LIBRARY_CONNECTOR_MODE=live` (Appendix B); **between 60 s and 180 s after the `LIVE` request of step 2**, keep "Tüm katlar" selected and press "Yenile"; afterwards restart the MCP server with the default mode | HTTP 200 with `source = "STALE"`, `isStale = true`, the original timestamp of step 2 and `isSimulated = true`; the card shows "Bu bilgi güncel olmayabilir" with that time; connector log shows `"outcome":"STALE"` | AC-03.7 |
 
-**Pass/fail rule:** PASS if steps 1–6 show the expected observation and step 7 either passes or is `NOT RUN` with the reason "fault injection not available in the demo deployment" (TC-06 is then cited as supporting evidence).
+**Pass/fail rule:** PASS if steps 1–7 all show the expected observation. Any deviation in a mandatory criterion is a FAIL.
 
-**Evidence:** screenshots of steps 3, 5 (and 7 if run); network entries of steps 2, 5, 6, 7; connector/fault log for step 7.
+**Evidence:** screenshots of steps 3, 5 and 7; network entries of steps 2, 5, 6, 7; connector log lines for steps 2, 6 and 7; the restart commands used in step 7.
 
 ### 4.4 AT-04 — UC-04 Combined Course, Shuttle and Menu Question
 
@@ -320,8 +322,8 @@ Each test lists preconditions, the test data, numbered steps with the expected o
 | Test | Criteria checked | Correspondence |
 | :--- | :--- | :--- |
 | **AT-01** | AC-01.1 – AC-01.8 | Each criterion is decided by one step: routing (step 2), completeness (3), presentation (4), labelling (5), caching (6), weekend behaviour (7), input validation (8), guest access and layout (1, 9). Together they cover the UC-01 main flow and both alternative flows from Design Document §3.2. |
-| **AT-02** | AC-02.1 – AC-02.7 | Routing (1), route selection for all three routes (2, 6), future/ascending departures (3, 6), labelling (4), caching (5), invalid route (7) and end-of-service (8, conditional) follow the UC-02 main and alternative flows of Design §3.3. |
-| **AT-03** | AC-03.1 – AC-03.7 | Routing (1), seat bounds and totals (2, 3), single-floor isolation (5), labelling (4), caching (6) and stale fallback (7, conditional) follow Design §3.4, including its connector-outage alternative flow. |
+| **AT-02** | AC-02.1 – AC-02.7 | Routing (1), route selection for all three routes (2, 6), future/ascending departures (3, 6), labelling (4), caching (5), invalid route (7) and end-of-service (8, with the MCP server restarted at 22:30 connector time) follow the UC-02 main and alternative flows of Design §3.3. |
+| **AT-03** | AC-03.1 – AC-03.7 | Routing (1), seat bounds and totals (2, 3), single-floor isolation (5), labelling (4), caching (6) and stale fallback (7, with the library connector forced to fail) follow Design §3.4, including its connector-outage alternative flow. |
 | **AT-04** | AC-04.1 – AC-04.12 | Steps follow the UC-04 main flow of Design §3.5 in order: protection for guests (1), login (2), agent routing (3), streamed answer with one badge per tool (4), real tool execution without identity arguments (5), answer consistency (6), privacy towards the LLM (7), token termination (8), invalid tokens (9) and slow-response handling (10, conditional). |
 
 Coverage check: every criterion in §3 is checked by at least one step, and every step checks at least one criterion.
@@ -349,7 +351,7 @@ Coverage check: every criterion in §3 is checked by at least one step, and ever
 | FR-06 | AC-04.1, AC-04.5 | AT-04 |
 | FR-07 | AC-04.8, AC-04.9 | AT-04 |
 | FR-09 | AC-01.7, AC-02.7, AC-03.6 | AT-01, AT-02, AT-03 |
-| FR-10 | AC-03.7 (conditional) | AT-03 |
+| FR-10 | AC-03.7 | AT-03 |
 | FR-12 | AC-01.6, AC-02.6, AC-03.5 | AT-01, AT-02, AT-03 |
 | FR-13 | AC-04.4, AC-04.6 | AT-04 |
 | FR-14 | AC-04.7 | AT-04 |
@@ -357,7 +359,7 @@ Coverage check: every criterion in §3 is checked by at least one step, and ever
 | FR-16 | AC-01.1, AC-02.1, AC-03.1, AC-04.3 | AT-01..AT-04 |
 | FR-17 | AC-04.4, AC-04.10 | AT-04 |
 | FR-18 | AC-01.1, AC-01.3, AC-02.1, AC-03.1 | AT-01, AT-02, AT-03 |
-| FR-19 | AC-02.5, AC-03.7, AC-04.12 (all conditional) | AT-02, AT-03, AT-04 |
+| FR-19 | AC-02.5, AC-03.7, AC-04.12 (AC-04.12 conditional) | AT-02, AT-03, AT-04 |
 | NFR-05 (3) | AC-04.7, AC-04.8 | AT-04 |
 | NFR-06 (3), NFR-07 | AC-01.8 | AT-01 |
 
@@ -394,8 +396,8 @@ All paths above exist on `dev` (checked at `4f66b28`, 20 Nov 2026).
 | Redis-backed tool cache | Planned (A-02); the connector runtime uses `InMemoryCacheStore` until then | Cache checks AC-01.7, AC-02.7, AC-03.6 run against the in-memory store; the execution record must state which store was used. FR-09's Redis requirement is reported separately |
 | Chat screen | Implemented (Y-07, PR #32, open) | Needed by AT-04 steps 3, 4 and 10 |
 | Agent, PII scrubber, agent stream endpoint | Planned (M-04, M-06, M-08) | AT-04 cannot run end to end before all three exist; until then the gateway answers the chat with 502 `DOWNSTREAM_ERROR` and the screen shows "Asistana şu an ulaşılamıyor" |
-| Settable test clock (`CONNECTOR_FIXED_NOW`) | Proposed (API Contract v1.1 §8 Q3) | AC-02.5 is conditional on it; other time-dependent checks use the recorded execution time if it is missing |
-| Fault injection in the demo deployment | Not yet defined | AC-03.7 is conditional; TC-06 remains the supporting evidence |
+| Test clock (`CONNECTOR_FIXED_NOW`), connector log, Redis-backed tool cache | Implemented by Arda Çelik in PR #31 (open at the time of writing) | AT-01..AT-03 assume PR #31 is merged before the acceptance runs: AC-02.5 needs the restart with a later start instant, the cache and "executed once" checks need the connector log, and AC-03.7 needs the Redis cache to survive the MCP restart. If PR #31 is not merged, these criteria are recorded as `FAIL` with that cause |
+| Library connector fault for AC-03.7 | No code change needed: `LIBRARY_CONNECTOR_MODE=live` selects the live placeholder, which always fails (no real occupancy feed exists) | The MCP server must be restarted with the default mode afterwards |
 | NFR-01, NFR-02, NFR-06 (1, 2), FR-13 benchmark | Outside the acceptance decision (§3.5) | Reported separately or as not measured |
 
 ---
@@ -413,7 +415,7 @@ Estimates are planning values for Project Assignment 3. Actual hours are filled 
 | TSK-AT-03 | AT-01..AT-03 steps against the implemented dashboard (§4.1–4.3) | Yunus Emre Biçer | Arda Çelik | 0.30 | ≈ 0.25 | Draft done (v0.1) |
 | TSK-AT-04 | AT-04 steps (§4.4); make concrete after login and chat UI exist | Yunus Emre Biçer | Murat Can Işık, Ahmet Sefa Efendioğlu | 0.30 | — | Draft (behaviour level) |
 | TSK-AT-05 | Correspondence and traceability (§5, §6), scope limits (§7) | Yunus Emre Biçer | Murat Can Işık | 0.20 | ≈ 0.17 | Draft done (v0.1) |
-| TSK-AT-06 | Review of data, cache and stale criteria | Arda Çelik | Yunus Emre Biçer | 0.10 | — | Requested |
+| TSK-AT-06 | Review of data, cache and stale criteria | Arda Çelik | Yunus Emre Biçer | 0.10 | — | Done (no objection, clarifications applied in v0.6; PR #17 comment, 20 Nov 2026) |
 | TSK-AT-07 | Review of agent, MCP and streaming criteria | Murat Can Işık | Yunus Emre Biçer | 0.10 | — | Done (no objection, PR #17 review, 20 Nov 2026) |
 | TSK-AT-08 | Review of gateway/security criteria and execution conditions | Ahmet Sefa Efendioğlu | Yunus Emre Biçer | 0.10 | — | Done (approved, PR #17 comment, 20 Nov 2026) |
 | TSK-AT-09 | Freeze v1.0 (26 Nov 2026) after reviews and UI completion | Yunus Emre Biçer | Entire team | 0.20 | — | Planned |
@@ -430,6 +432,7 @@ Estimates are planning values for Project Assignment 3. Actual hours are filled 
 | 0.3 | 20 Nov 2026 | Status note, §4.1–4.4 supporting tests, AT-04 step 2, §6.2, §6.3, §7 | Applied the second note of Ahmet Sefa Efendioğlu's review after PR #22 was merged: gateway suites (`queryProxy`, `chatStreamProxy`, `rateLimiter`, `deploymentConfig`) added to §6.2 and the AT tables; S-01 / S-03 marked implemented in §6.3. Also brought the document in line with `dev` at `4f66b28`: login (PR #20), web data cards and chat client implemented; MCP backed by the connector runtime (PR #26, M-01/M-02/M-03) with `tests/mcp-server/httpConnectors.test.ts`; cache still in-memory until A-02; deployment row added. AT-04 step 2 made concrete for the implemented login page. All referenced `dev` paths re-checked | Yunus Emre Biçer |
 | 0.4 | 20 Nov 2026 | List of Contributors, §8 | Recorded Murat Can Işık's review of AC-04.3 – AC-04.7, AC-04.10, AC-04.11 (PR #17, 20 Nov 2026): no objection, consistent with API Contract v1.1. His implementation notes need no change to the criteria: the agent will not call the same tool twice in one turn (AC-04.4), and the AC-04.7 / AC-04.11 evidence will be a redacted outbound provider request log under docs/assignment3/evidence/AT-04/ (no JWT, student ID, name, e-mail or API key), as required by §2.4. Review of AC-01.x – AC-03.x by Arda Çelik is still pending | Yunus Emre Biçer |
 | 0.5 | 20 Nov 2026 | Status note, §3.4 AC-04.1/.2/.3/.12, §4.4 AT-04 steps 1, 3, 4, 10 and evidence, §6.3, §7 | AT-04 steps made concrete for the implemented chat screen (PR #32). Step 3 now sends the question through the dashboard query box ("Asistana yönlendirilecek" → "Asistanda sor" → prefilled message → "Gönder"), because the router decision of AC-04.3 is only visible there; the previous wording would not have let a tester observe it. Steps 1, 4 and 10 name the actual texts, buttons and badges. AC-04.12 aligned with the implemented and documented rule (Design Document v1.1 §3.5): cancellation after 20 s without any data, explicit retry, no automatic resend. Chat screen marked implemented in §6.3 and §7; agent, PII scrubber and agent stream remain planned | Yunus Emre Biçer |
+| 0.6 | 21 Nov 2026 | List of Contributors, §2.3, §2.4, §3.1–3.3 (AC-01.7, AC-02.2, AC-02.5, AC-02.7, AC-03.4, AC-03.6, AC-03.7), §4.1–4.3 (preconditions, steps, pass/fail rules, evidence), §5, §6.1, §7, §8, Appendices A and B | Applied Arda Çelik's review of AC-01.x – AC-03.x (PR #17, 20 Nov 2026; checked against the connector code of PR #31): test clock starts at the fixed instant and advances in real time, with the start time recorded; cache emptied before AT-01..AT-03; connector log (connector.execute, upstreamCalled) defined as the evidence for "executed once"; AC-01.7 reworded to one connector execution for 2026-11-23 over the whole AT-01 run, avoiding a false FAIL when the browser date already loads that menu; AC-02.2 compares with the connector time of the response and names the count (3); AC-02.5 made mandatory (MCP restart at 22:30; METRO_LINE runs until 23:00); AC-03.4 uses the 15-minute occupancy window; AC-03.7 made mandatory with the live-placeholder fault procedure (60–180 s window, Redis cache). Only AC-04.12 remains conditional. All three reviews are now recorded | Yunus Emre Biçer |
 
 ---
 
@@ -448,7 +451,8 @@ ENV:              <OS / Node / Docker Compose version / browser and version>
 DATA_MODE:        MOCK
 WEB_DATA_SOURCE:  gateway
 LLM_PROVIDER:     <real Gemini | not used>            (AT-04 only)
-TEST_CLOCK:       <CONNECTOR_FIXED_NOW value | real clock at execution>
+TEST_CLOCK:       <CONNECTOR_FIXED_NOW value(s) and the real MCP server start time(s)>
+CACHE_RESET:      <time the tool cache was emptied before the test>
 STEPS_EXECUTED:   <step numbers; conditional steps marked RUN / NOT RUN with reason>
 EXPECTED:         <reference to the criteria of this document>
 ACTUAL:           <observed values per step>
@@ -463,6 +467,19 @@ ISSUE:            <GitHub issue link, if any>
 These requests produce inputs that the user interface does not allow. They are sent to the gateway (default `http://localhost:3000`, API Contract v1.1 §7). Tokens are written as placeholders and never committed.
 
 ```bash
+# Before AT-01, AT-02 and AT-03 — empty the tool cache (Redis)
+docker compose exec redis sh -c "redis-cli --scan --pattern 'cache:*' | xargs -r redis-cli del"
+
+# Connector log used by the cache and "executed once" checks (§2.4)
+docker compose logs mcp-server | grep connector.execute
+
+# AT-02 step 8 — restart the MCP server with a later start instant (default afterwards: 09:00)
+CONNECTOR_FIXED_NOW=2026-11-23T22:30:00+03:00 docker compose up -d mcp-server
+
+# AT-03 step 7 — make the library connector fail, then restore the default mode
+LIBRARY_CONNECTOR_MODE=live docker compose up -d mcp-server
+LIBRARY_CONNECTOR_MODE=mock docker compose up -d mcp-server
+
 # AT-01 step 8 — impossible date (expect 400 INVALID_PARAMS)
 curl -s -X POST http://localhost:3000/api/v1/query \
   -H "Content-Type: application/json" \
