@@ -36,13 +36,12 @@ export function ShuttleCard({ client, highlighted }: { client: GatewayClient; hi
       highlighted={highlighted}
       badges={meta && <MetaBadges meta={meta} />}
     >
-      <div className={styles.segmented} role="radiogroup" aria-label="Hat seçimi">
+      <div className={styles.segmented} role="group" aria-label="Hat seçimi">
         {ROUTE_OPTIONS.map((option) => (
           <button
             key={option.value}
             type="button"
-            role="radio"
-            aria-checked={route === option.value}
+            aria-pressed={route === option.value}
             className={route === option.value ? `${styles.segment} ${styles.segmentActive}` : styles.segment}
             onClick={() => setRoute(option.value)}
           >

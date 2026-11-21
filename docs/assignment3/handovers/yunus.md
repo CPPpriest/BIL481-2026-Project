@@ -116,7 +116,7 @@ For `docs/assignment3/traceability.md` (M-12). "Tests" lists automated suites; a
 | FR-17 | Chat stream client (parser, events, reducer) | `apps/web/src/lib/chat/` | `sseParser.test.ts`, `chatStreamClient.test.ts` | AT-04 steps 3–4 | Client implemented; UI planned (Y-07) |
 | FR-18 | Dashboard, three cards, gateway client | `src/components/Dashboard.tsx`, `src/components/cards/`, `src/lib/gateway/` | `gatewayClient.test.ts`, `format.test.ts` | AT-01, AT-02, AT-03 | Implemented except card D and card-click prefill |
 | FR-19 | Card states (stale, empty, error, retry), chat latency flags | `src/components/cards/CardParts.tsx`, `src/lib/chat/chatStreamClient.ts` | `gatewayClient.test.ts`, `chatStreamClient.test.ts` | AT-02 step 8, AT-03 step 7, AT-04 step 10 (all conditional) | Cards implemented; chat states in client, UI planned |
-| NFR-07 | Responsive layout | `src/app/globals.css`, `*.module.css` | — (manual) | AT-01 step 9 | Checked at 375 px and desktop in Chrome; 768 / 1440 px and other browsers not yet (Y-10) |
+| NFR-07 | Responsive layout | `src/app/globals.css`, `*.module.css` | — (manual) | AT-01 step 9 | Chromium: 375 / 768 / 1440 / 1920 px, keyboard, headings, labels and contrast checked (`evidence/y10-responsive/`); Firefox visual check passed; Safari not yet (Y-10) |
 | NFR-09 (web part) | Web Docker image | `apps/web/Dockerfile`, `src/app/healthz/route.ts` | — | Deployment Plan | Implemented (PR #18, open); `docker build` not yet run |
 
 ---
